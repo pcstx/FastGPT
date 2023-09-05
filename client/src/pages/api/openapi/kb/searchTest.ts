@@ -43,9 +43,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
         select id, q, a, source, file_id, (vector <#> '[${
           vectors[0]
-        }]') * -1 AS score from ${PgTrainingTableName} where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
-        vectors[0]
-      }]' limit 12;
+        }]') * -1 AS score from modelData where kb_id='${kbId}' AND user_id='${userId}' order by vector <#> '[${
+          vectors[0]
+        }]' limit 12;
         COMMIT;`
     );
 

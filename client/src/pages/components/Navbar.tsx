@@ -97,11 +97,11 @@ const Navbar = () => {
         <Box flex={1} />
         {isPc ? (
           <>
-            {menuList.map((item) => (
+            {/* {menuList.map((item) => (
               <Box key={item.key} {...menuStyles} onClick={item.onClick}>
                 {item.label}
               </Box>
-            ))}
+            ))} */}
             {/* <Box px={4} color={'myGray.500'}>
               |
             </Box> */}
@@ -122,11 +122,11 @@ const Navbar = () => {
       </Flex>
       {isOpenMenu && !isPc && (
         <Box mt={'15vh'} ml={'10vw'}>
-          {menuList.map((item) => (
+          {/* {menuList.map((item) => (
             <Box key={item.key} mb={8} onClick={item.onClick}>
               {item.label}
             </Box>
-          ))}
+          ))} */}
           <Box bg={'myGray.500'} h={'1.5px'} w={'20px'} mb={8} />
           <Box mb={10} onClick={() => router.push('/login')}>
             {t('home.Login')}

@@ -97,9 +97,7 @@ function App({ Component, pageProps }: AppProps) {
       <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
       <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-      {scripts?.map((item, i) => (
-        <Script key={i} strategy="lazyOnload" {...item}></Script>
-      ))}
+      {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
       {googleClientVerKey && (
         <>
           <Script
