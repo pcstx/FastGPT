@@ -64,9 +64,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
       lastRoute
     });
     router.replace(
-      `https://github.com/login/oauth/authorize?client_id=${
-        feConfigs?.gitLoginKey
-      }&redirect_uri=${`${location.origin}/login/provider`}&scope=user:email%20read:user`,
+      `https://github.com/login/oauth/authorize?client_id=${feConfigs?.gitLoginKey}&redirect_uri=${`${location.origin}/login/provider`}&scope=user:email%20read:user`,
       '_self'
     );
   }, [lastRoute, setLoginStore]);
@@ -136,7 +134,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         >
           登录
         </Button>
-        {feConfigs?.show_register && (
+        {feConfigs?.show_register && feConfigs?.show_git_login && (
           <>
             <Flex mt={10} justifyContent={'center'} alignItems={'center'}>
               <MyIcon

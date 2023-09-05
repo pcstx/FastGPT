@@ -18,8 +18,10 @@ export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 export type FeConfigsType = {
   show_emptyChat?: boolean;
   show_register?: boolean;
+  show_git_login?: boolean;
   show_appStore?: boolean;
   show_userDetail?: boolean;
+  show_doc?: boolean;
   show_contact?: boolean;
   show_git?: boolean;
   show_doc?: boolean;

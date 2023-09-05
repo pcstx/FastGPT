@@ -1,14 +1,14 @@
 {
   "FeConfig": {
     "show_emptyChat": true,
-    "show_register": false,
+    "show_register": true,
+    "show_git_login": false,
     "show_appStore": false,
-    "show_userDetail": false,
-    "show_contact": true,
-    "show_git": true,
-    "show_doc": true,
-    "systemTitle": "FastGPT",
-    "authorText": "Made by FastGPT Team.",
+    "show_userDetail": true,
+    "show_git": false,
+    "show_doc":false,
+    "systemTitle": "破壳AI知识库",
+    "authorText": "Made by PerkAI Team.",
     "gitLoginKey": "",
     "scripts": []
   },
