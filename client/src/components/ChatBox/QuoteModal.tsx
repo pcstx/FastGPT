@@ -1,6 +1,6 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
-import { getKbDataItemById } from '@/api/plugins/kb';
+import { getDatasetDataItemById } from '@/api/core/dataset/data';
 import { useLoading } from '@/hooks/useLoading';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
@@ -8,9 +8,10 @@ import { QuoteItemType } from '@/types/chat';
 import MyIcon from '@/components/Icon';
 import InputDataModal, { RawFileText } from '@/pages/kb/detail/components/InputDataModal';
 import MyModal from '../MyModal';
-import { KbDataItemType } from '@/types/plugin';
+import type { PgDataItemType } from '@/types/core/dataset/data';
+import { useRouter } from 'next/router';
 
-type SearchType = KbDataItemType & {
+type SearchType = PgDataItemType & {
   kb_id?: string;
 };
 
@@ -19,14 +20,17 @@ const QuoteModal = ({
   rawSearch = [],
   onClose
 }: {
-  onUpdateQuote: (quoteId: string, sourceText: string) => Promise<void>;
+  onUpdateQuote: (quoteId: string, sourceText?: string) => Promise<void>;
   rawSearch: SearchType[];
   onClose: () => void;
 }) => {
   const theme = useTheme();
+  const router = useRouter();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
   const [editDataItem, setEditDataItem] = useState<QuoteItemType>();
+
+  const isShare = useMemo(() => router.pathname === '/chat/share', [router.pathname]);
 
   /**
    * click edit, get new kbDataItem
@@ -36,7 +40,7 @@ const QuoteModal = ({
       if (!item.id) return;
       try {
         setIsLoading(true);
-        const data = await getKbDataItemById(item.id);
+        const data = await getDatasetDataItemById(item.id);
 
         if (!data) {
           onUpdateQuote(item.id, '已删除');
@@ -91,10 +95,12 @@ const QuoteModal = ({
               _hover={{ '& .edit': { display: 'flex' } }}
               overflow={'hidden'}
             >
-              {item.source && <RawFileText filename={item.source} fileId={item.file_id} />}
+              {item.source && !isShare && (
+                <RawFileText filename={item.source} fileId={item.file_id} />
+              )}
               <Box>{item.q}</Box>
               <Box>{item.a}</Box>
-              {item.id && (
+              {item.id && !isShare && (
                 <Box
                   className="edit"
                   display={'none'}
@@ -129,7 +135,7 @@ const QuoteModal = ({
       {editDataItem && (
         <InputDataModal
           onClose={() => setEditDataItem(undefined)}
-          onSuccess={() => onUpdateQuote(editDataItem.id, '手动修改')}
+          onSuccess={() => onUpdateQuote(editDataItem.id)}
           onDelete={() => onUpdateQuote(editDataItem.id, '已删除')}
           kbId={editDataItem.kb_id}
           defaultValues={{

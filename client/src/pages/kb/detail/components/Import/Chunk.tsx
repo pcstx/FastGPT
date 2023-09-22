@@ -15,7 +15,6 @@ import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useRouter } from 'next/router';
 import { useMutation } from '@tanstack/react-query';
-import { postKbDataFromList } from '@/api/plugins/kb';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@/utils/user';
@@ -26,12 +25,14 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
+import { putMarkFilesUsed } from '@/api/core/dataset/file';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
 const ChunkImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
 
   const vectorModel = kbDetail.vectorModel;
   const unitPrice = vectorModel?.price || 0.2;
@@ -64,29 +65,28 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
 
-      // subsection import
-      let success = 0;
-      const step = 300;
-      for (let i = 0; i < chunks.length; i += step) {
-        const { insertLen } = await postKbDataFromList({
-          kbId,
-          data: chunks.slice(i, i + step),
-          mode: TrainingModeEnum.index
-        });
+      // mark the file is used
+      await putMarkFilesUsed({ fileIds: files.map((file) => file.id) });
 
-        success += insertLen;
-        setSuccessChunks(success);
-      }
+      // upload data
+      const { insertLen } = await chunksUpload({
+        kbId,
+        chunks,
+        mode: TrainingModeEnum.index,
+        onUploading: (insertLen) => {
+          setSuccessChunks(insertLen);
+        }
+      });
 
       toast({
-        title: `去重后共导入 ${success} 条数据，请耐心等待训练.`,
+        title: `去重后共导入 ${insertLen} 条数据，请耐心等待训练.`,
         status: 'success'
       });
 
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },
@@ -106,12 +106,15 @@ const ChunkImport = ({ kbId }: { kbId: string }) => {
             text: file.text,
             maxLen: chunkLen
           });
+
           return {
             ...file,
             tokens: splitRes.tokens,
-            chunks: file.chunks.map((chunk, i) => ({
-              ...chunk,
-              q: splitRes.chunks[i]
+            chunks: splitRes.chunks.map((chunk) => ({
+              a: '',
+              source: file.filename,
+              file_id: file.id,
+              q: chunk
             }))
           };
         })

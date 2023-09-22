@@ -1,20 +1,24 @@
 import React, { useState, useCallback } from 'react';
 import { Box, Flex, Button, Textarea, IconButton, BoxProps } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { insertData2Kb, putKbDataById, delOneKbDataByDataId } from '@/api/plugins/kb';
-import { getFileViewUrl } from '@/api/system';
+import {
+  postData2Dataset,
+  putDatasetDataById,
+  delOneDatasetDataById
+} from '@/api/core/dataset/data';
 import { useToast } from '@/hooks/useToast';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useUserStore } from '@/store/user';
 import { useQuery } from '@tanstack/react-query';
-import { DatasetItemType } from '@/types/plugin';
+import { DatasetDataItemType } from '@/types/core/dataset/data';
 import { useTranslation } from 'react-i18next';
+import { useDatasetStore } from '@/store/dataset';
+import { getFileAndOpen } from '@/utils/web/file';
 
-export type FormData = { dataId?: string } & DatasetItemType;
+export type FormData = { dataId?: string } & DatasetDataItemType;
 
 const InputDataModal = ({
   onClose,
@@ -36,7 +40,7 @@ const InputDataModal = ({
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  const { kbDetail, getKbDetail } = useUserStore();
+  const { kbDetail, getKbDetail } = useDatasetStore();
 
   const { getValues, register, handleSubmit, reset } = useForm<FormData>({
     defaultValues
@@ -65,7 +69,7 @@ const InputDataModal = ({
           q: e.q,
           source: '手动录入'
         };
-        data.dataId = await insertData2Kb({
+        data.dataId = await postData2Dataset({
           kbId,
           data
         });
@@ -104,7 +108,7 @@ const InputDataModal = ({
             a: e.a,
             q: e.q === defaultValues.q ? '' : e.q
           };
-          await putKbDataById(data);
+          await putDatasetDataById(data);
           onSuccess(data);
         } catch (err) {
           toast({
@@ -168,7 +172,7 @@ const InputDataModal = ({
           </Box>
           <Box flex={1} h={['50%', '100%']}>
             <Flex>
-              <Box h={'30px'}>{'预期答案'}</Box>
+              <Box h={'30px'}>{'补充内容'}</Box>
               <MyTooltip
                 label={'匹配的知识点被命中后，这部分内容会随匹配知识点一起注入模型，引导模型回答'}
               >
@@ -177,9 +181,8 @@ const InputDataModal = ({
             </Flex>
             <Textarea
               placeholder={
-                '预期答案。这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，通常是问题的答案。总和最多 3000 字。'
+                '这部分内容不会被搜索，但会作为"匹配的知识点"的内容补充，通常是问题的答案。'
               }
-              maxLength={3000}
               resize={'none'}
               h={'calc(100% - 30px)'}
               {...register('a')}
@@ -212,7 +215,7 @@ const InputDataModal = ({
                 onClick={async () => {
                   if (!onDelete || !defaultValues.dataId) return;
                   try {
-                    await delOneKbDataByDataId(defaultValues.dataId);
+                    await delOneDatasetDataById(defaultValues.dataId);
                     onDelete();
                     onClose();
                     toast({
@@ -261,18 +264,14 @@ export function RawFileText({ fileId, filename = '', ...props }: RawFileTextProp
       <Box
         color={'myGray.600'}
         display={'inline-block'}
+        whiteSpace={'nowrap'}
         {...(!!fileId
           ? {
               cursor: 'pointer',
-              textDecoration: ['underline', 'none'],
-              _hover: {
-                textDecoration: 'underline'
-              },
+              textDecoration: 'underline',
               onClick: async () => {
                 try {
-                  const url = await getFileViewUrl(fileId);
-                  const asPath = `${location.origin}${url}`;
-                  window.open(asPath, '_blank');
+                  await getFileAndOpen(fileId);
                 } catch (error) {
                   toast({
                     title: getErrText(error, '获取文件地址失败'),

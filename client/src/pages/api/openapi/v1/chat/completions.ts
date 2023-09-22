@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser, authApp, authShareChat, AuthUserTypeEnum } from '@/service/utils/auth';
+import { authUser, authApp } from '@/service/utils/auth';
 import { sseErrRes, jsonRes } from '@/service/response';
 import { addLog, withNextCors } from '@/service/utils/tools';
 import { ChatRoleEnum, ChatSourceEnum, sseResponseEventEnum } from '@/constants/chat';
@@ -23,11 +23,16 @@ import { type ChatCompletionRequestMessage } from 'openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { FlowModuleTypeEnum, initModuleType } from '@/constants/flow';
 import { AppModuleItemType, RunningModuleItemType } from '@/types/app';
-import { pushTaskBill } from '@/service/events/pushBill';
+import { pushTaskBill } from '@/service/common/bill/push';
 import { BillSourceEnum } from '@/constants/user';
 import { ChatHistoryItemResType } from '@/types/chat';
 import { UserModelSchema } from '@/types/mongoSchema';
 import { SystemInputEnum } from '@/constants/app';
+import { getSystemTime } from '@/utils/user';
+import { authOutLinkChat } from '@/service/support/outLink/auth';
+import requestIp from 'request-ip';
+import { replaceVariable } from '@/utils/common/tools/text';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
 export type MessageItemType = ChatCompletionRequestMessage & { dataId?: string };
 type FastGptWebChatProps = {
@@ -76,28 +81,31 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!Array.isArray(messages)) {
       throw new Error('messages is not array');
     }
+    if (messages.length === 0) {
+      throw new Error('messages is empty');
+    }
 
     await connectToDatabase();
     let startTime = Date.now();
 
     /* user auth */
-    const {
+    let {
+      // @ts-ignore
+      responseDetail,
       user,
       userId,
       appId: authAppid,
       authType
     } = await (shareId
-      ? authShareChat({
-          shareId
+      ? authOutLinkChat({
+          shareId,
+          ip: requestIp.getClientIp(req)
         })
       : authUser({ req, authBalance: true }));
 
     if (!user) {
       throw new Error('Account is error');
     }
-    // if (authType === AuthUserTypeEnum.apikey || shareId) {
-    //   user.openaiAccount = undefined;
-    // }
 
     appId = appId ? appId : authAppid;
     if (!appId) {
@@ -110,13 +118,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId
       }),
-      getChatHistory({ chatId, userId })
+      getChatHistory({ chatId, appId, userId })
     ]);
 
     const isOwner = !shareId && userId === String(app.userId);
+    responseDetail = isOwner || responseDetail;
 
     const prompts = history.concat(gptMessage2ChatType(messages));
-    if (prompts[prompts.length - 1].obj === 'AI') {
+    if (prompts[prompts.length - 1]?.obj === 'AI') {
       prompts.pop();
     }
     // user question
@@ -146,11 +155,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       stream,
       detail
     });
-    // console.log(responseData, '===', answerText);
-
-    // if (!answerText) {
-    //   throw new Error('回复内容为空，可能模块编排出现问题');
-    // }
 
     // save chat
     if (chatId) {
@@ -159,7 +163,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         appId,
         userId,
         variables,
-        isOwner,
+        isOwner, // owner update use time
         shareId,
         source: (() => {
           if (shareId) {
@@ -199,7 +203,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         data: '[DONE]'
       });
 
-      if (isOwner && detail) {
+      if (responseDetail && detail) {
         sseResponse({
           res,
           event: sseResponseEventEnum.appStreamResponse,
@@ -249,6 +253,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 });
 
+/* running */
 export async function dispatchModules({
   res,
   modules,
@@ -260,17 +265,22 @@ export async function dispatchModules({
 }: {
   res: NextApiResponse;
   modules: AppModuleItemType[];
-  user?: UserModelSchema;
+  user: UserModelSchema;
   params?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
   detail?: boolean;
 }) {
+  variables = {
+    ...getSystemVariable({ timezone: user.timezone }),
+    ...variables
+  };
   const runningModules = loadModules(modules, variables);
 
   // let storeData: Record<string, any> = {}; // after module used
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAnswerText = ''; // AI answer
+  let runningTime = Date.now();
 
   function pushStore({
     answerText = '',
@@ -279,7 +289,13 @@ export async function dispatchModules({
     answerText?: string;
     responseData?: ChatHistoryItemResType;
   }) {
-    responseData && chatResponse.push(responseData);
+    const time = Date.now();
+    responseData &&
+      chatResponse.push({
+        ...responseData,
+        runningTime: +((time - runningTime) / 1000).toFixed(2)
+      });
+    runningTime = time;
     chatAnswerText += answerText;
   }
   function moduleInput(
@@ -350,13 +366,15 @@ export async function dispatchModules({
     module.inputs.forEach((item: any) => {
       params[item.key] = item.value;
     });
-    const props: Record<string, any> = {
+    const props: ModuleDispatchProps<Record<string, any>> = {
       res,
       stream,
       detail,
+      variables,
+      moduleName: module.name,
       outputs: module.outputs,
       userOpenaiAccount: user?.openaiAccount,
-      ...params
+      inputs: params
     };
 
     const dispatchRes = await (async () => {
@@ -390,6 +408,7 @@ export async function dispatchModules({
   };
 }
 
+/* init store modules to running modules */
 function loadModules(
   modules: AppModuleItemType[],
   variables: Record<string, any>
@@ -411,10 +430,7 @@ function loadModules(
           }
 
           // variables replace
-          const replacedVal = item.value.replace(
-            /{{(.*?)}}/g,
-            (match, key) => variables[key.trim()] || match
-          );
+          const replacedVal = replaceVariable(item.value, variables);
 
           return {
             key: item.key,
@@ -431,6 +447,7 @@ function loadModules(
   });
 }
 
+/* sse response modules staus */
 export function responseStatus({
   res,
   status,
@@ -451,10 +468,15 @@ export function responseStatus({
   });
 }
 
+/* get system variable */
+export function getSystemVariable({ timezone }: { timezone: string }) {
+  return {
+    cTime: getSystemTime(timezone)
+  };
+}
+
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '20mb'
-    }
+    responseLimit: '20mb'
   }
 };

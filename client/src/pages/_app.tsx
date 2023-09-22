@@ -10,7 +10,7 @@ import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';
 import { clientInitData, feConfigs } from '@/store/static';
 import { appWithTranslation, useTranslation } from 'next-i18next';
-import { getLangStore, setLangStore } from '@/utils/i18n';
+import { getLangStore, setLangStore } from '@/utils/web/i18n';
 import { useRouter } from 'next/router';
 import { useGlobalStore } from '@/store/global';
 
@@ -41,16 +41,14 @@ function App({ Component, pageProps }: AppProps) {
   const { setLastRoute } = useGlobalStore();
 
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
-  const [googleClientVerKey, setGoogleVerKey] = useState<string>();
 
   useEffect(() => {
     // get init data
     (async () => {
       const {
-        feConfigs: { scripts, googleClientVerKey }
+        feConfigs: { scripts }
       } = await clientInitData();
       setScripts(scripts || []);
-      setGoogleVerKey(googleClientVerKey);
     })();
     // add window error track
     window.onerror = function (msg, url) {
@@ -87,25 +85,18 @@ function App({ Component, pageProps }: AppProps) {
     <>
       <Head>
         <title>{feConfigs?.systemTitle || 'AI'}</title>
-        <meta name="description" content="Embedding + LLM, Build AI knowledge base" />
+        <meta
+          name="description"
+          content="FastGPT is a knowledge-based question answering system built on the LLM. It offers out-of-the-box data processing and model invocation capabilities. Moreover, it allows for workflow orchestration through Flow visualization, thereby enabling complex question and answer scenarios!"
+        />
         <meta
           name="viewport"
           content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no, viewport-fit=cover"
         />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
-      <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
-      <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
       {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
-      {googleClientVerKey && (
-        <>
-          <Script
-            src={`https://www.recaptcha.net/recaptcha/api.js?render=${googleClientVerKey}`}
-            strategy="lazyOnload"
-          ></Script>
-        </>
-      )}
+
       <QueryClientProvider client={queryClient}>
         <ChakraProvider theme={theme}>
           <ColorModeScript initialColorMode={theme.config.initialColorMode} />

@@ -3,7 +3,8 @@ import type { InitChatResponse, InitShareChatResponse } from '@/api/response/cha
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { ClassifyQuestionAgentItemType } from './app';
 import { ChatItemSchema } from './mongoSchema';
-import { KbDataItemType } from './plugin';
+import type { PgDataItemType } from '@/types/core/dataset/data';
+import { FlowModuleTypeEnum } from '@/constants/flow';
 
 export type ExportChatType = 'md' | 'pdf' | 'html';
 
@@ -42,25 +43,27 @@ export type ShareChatType = InitShareChatResponse & {
   history: ShareChatHistoryItemType;
 };
 
-export type QuoteItemType = KbDataItemType & {
+export type QuoteItemType = PgDataItemType & {
   kb_id: string;
 };
 
+// response data
 export type ChatHistoryItemResType = {
+  moduleType: `${FlowModuleTypeEnum}`;
   moduleName: string;
   price: number;
-  model?: string;
+  runningTime?: number;
   tokens?: number;
+  model?: string;
 
   // chat
-  answer?: string;
   question?: string;
   temperature?: number;
   maxToken?: number;
   quoteList?: QuoteItemType[];
-  completeMessages?: ChatItemType[];
+  historyPreview?: ChatItemType[]; // completion context array. history will slice
 
-  // kb search
+  // dataset search
   similarity?: number;
   limit?: number;
 
@@ -73,5 +76,6 @@ export type ChatHistoryItemResType = {
   extractResult?: Record<string, any>;
 
   // http
+  body?: Record<string, any>;
   httpResult?: Record<string, any>;
 };

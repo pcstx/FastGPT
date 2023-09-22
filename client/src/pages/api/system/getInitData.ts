@@ -1,11 +1,12 @@
-import type { FeConfigsType } from '@/types';
+import type { FeConfigsType, SystemEnvType } from '@/types';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@/service/response';
 import { readFileSync } from 'fs';
 import {
   type QAModelItemType,
   type ChatModelItemType,
-  type VectorModelItemType
+  type VectorModelItemType,
+  FunctionModelItemType
 } from '@/types/model';
 
 export type InitDateResponse = {
@@ -13,6 +14,7 @@ export type InitDateResponse = {
   qaModel: QAModelItemType;
   vectorModels: VectorModelItemType[];
   feConfigs: FeConfigsType;
+  systemVersion: string;
 };
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,17 +26,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       feConfigs: global.feConfigs,
       chatModels: global.chatModels,
       qaModel: global.qaModel,
-      vectorModels: global.vectorModels
+      vectorModels: global.vectorModels,
+      systemVersion: global.systemVersion || '0.0.0'
     }
   });
 }
 
-const defaultSystemEnv = {
+const defaultSystemEnv: SystemEnvType = {
   vectorMaxProcess: 15,
   qaMaxProcess: 15,
   pgIvfflatProbe: 20
 };
-const defaultFeConfigs = {
+const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
   show_register: false,
   show_appStore: false,
@@ -44,7 +47,9 @@ const defaultFeConfigs = {
   show_doc: true,
   systemTitle: 'FastGPT',
   authorText: 'Made by FastGPT Team.',
-  gitLoginKey: '',
+  limit: {
+    exportLimitMinutes: 0
+  },
   scripts: []
 };
 const defaultChatModels = [
@@ -79,6 +84,22 @@ const defaultQAModel = {
   maxToken: 16000,
   price: 0
 };
+export const defaultExtractModel: FunctionModelItemType = {
+  model: 'gpt-3.5-turbo-16k',
+  name: 'GPT35-16k',
+  maxToken: 16000,
+  price: 0,
+  prompt: '',
+  functionCall: true
+};
+export const defaultCQModel: FunctionModelItemType = {
+  model: 'gpt-3.5-turbo-16k',
+  name: 'GPT35-16k',
+  maxToken: 16000,
+  price: 0,
+  prompt: '',
+  functionCall: true
+};
 
 const defaultVectorModels: VectorModelItemType[] = [
   {
@@ -94,15 +115,24 @@ export async function getInitConfig() {
   try {
     if (global.feConfigs) return;
 
+    getSystemVersion();
+
     const filename =
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8'));
+
+    console.log(`System Version: ${global.systemVersion}`);
+
     console.log(res);
 
-    global.systemEnv = res.SystemParams || defaultSystemEnv;
-    global.feConfigs = res.FeConfig || defaultFeConfigs;
+    global.systemEnv = res.SystemParams
+      ? { ...defaultSystemEnv, ...res.SystemParams }
+      : defaultSystemEnv;
+    global.feConfigs = res.FeConfig ? { ...defaultFeConfigs, ...res.FeConfig } : defaultFeConfigs;
     global.chatModels = res.ChatModels || defaultChatModels;
     global.qaModel = res.QAModel || defaultQAModel;
+    global.extractModel = res.ExtractModel || defaultExtractModel;
+    global.cqModel = res.CQModel || defaultCQModel;
     global.vectorModels = res.VectorModels || defaultVectorModels;
   } catch (error) {
     setDefaultData();
@@ -116,4 +146,20 @@ export function setDefaultData() {
   global.chatModels = defaultChatModels;
   global.qaModel = defaultQAModel;
   global.vectorModels = defaultVectorModels;
+}
+
+export function getSystemVersion() {
+  try {
+    if (process.env.NODE_ENV === 'development') {
+      global.systemVersion = process.env.npm_package_version || '0.0.0';
+      return;
+    }
+    const packageJson = JSON.parse(readFileSync('/app/package.json', 'utf-8'));
+
+    global.systemVersion = packageJson?.version;
+  } catch (error) {
+    console.log(error);
+
+    global.systemVersion = '0.0.0';
+  }
 }

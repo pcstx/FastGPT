@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { initShareChatInfo } from '@/api/chat';
+import { initShareChatInfo } from '@/api/support/outLink';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useGlobalStore } from '@/store/global';
@@ -19,7 +19,7 @@ import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/
 import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
-import { serviceSideProps } from '@/utils/i18n';
+import { serviceSideProps } from '@/utils/web/i18n';
 
 const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
   const router = useRouter();
@@ -64,6 +64,7 @@ const OutLink = ({ shareId, chatId }: { shareId: string; chatId: string }) => {
         status: 'finish'
       }));
       result[1].value = responseText;
+      result[1].responseData = responseData;
 
       /* save chat */
       saveChatResponse({

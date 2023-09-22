@@ -1,4 +1,4 @@
-import { insertKbItem } from '@/service/pg';
+import { insertData2Dataset } from '@/service/pg';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
 import { TrainingData } from '../models/trainingData';
 import { ERROR_ENUM } from '../errorCode';
@@ -39,7 +39,8 @@ export async function generateVector(): Promise<any> {
       a: 1,
       source: 1,
       file_id: 1,
-      vectorModel: 1
+      vectorModel: 1,
+      billId: 1
     });
 
     // task preemption
@@ -64,11 +65,12 @@ export async function generateVector(): Promise<any> {
     const { vectors } = await getVector({
       model: data.vectorModel,
       input: dataItems.map((item) => item.q),
-      userId
+      userId,
+      billId: data.billId
     });
 
     // 生成结果插入到 pg
-    await insertKbItem({
+    await insertData2Dataset({
       userId,
       kbId,
       data: vectors.map((vector, i) => ({
@@ -96,9 +98,7 @@ export async function generateVector(): Promise<any> {
         data: err.response?.data
       });
     } else {
-      addLog.info('openai error: 生成向量错误', {
-        err
-      });
+      addLog.error('openai error: 生成向量错误', err);
     }
 
     // message error or openai account error

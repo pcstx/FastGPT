@@ -4,21 +4,26 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2和m3e-large'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 200
+weight: 930
 ---
 
 ## 前言
 
-FastGPT 默认使用了 openai 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
+FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私有化部署的话，可以使用 ChatGLM2 和 m3e-large 模型。以下是由用户@不做了睡大觉 提供的接入方法。该镜像直接集成了 M3E-Large 和 ChatGLM2-6B 模型，可以直接使用。
 
 ## 部署镜像
 
-镜像名: `stawky/chatglm2-m3e:latest`  
-国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2-m3e:latest`
-端口号: 6006
-镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
++ 镜像名: `stawky/chatglm2-m3e:latest`  
++ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2-m3e:latest`
++ 端口号: 6006
 
-## 接入 OneAPI
+```
+# 设置安全凭证（即oneapi中的渠道密钥）
+默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。
+```
+
+## 接入 [One API](/docs/installation/one-api/)
 
 为 chatglm2 和 m3e-large 各添加一个渠道，参数如下：
 
@@ -50,7 +55,7 @@ curl --location --request POST 'https://domain/v1/chat/completions' \
 }'
 ```
 
-Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneAPI 填写的自定义模型。
+Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One API 填写的自定义模型。
 
 ## 接入 FastGPT
 
@@ -94,20 +99,20 @@ M3E 模型的使用方法如下：
 
 1. 创建知识库时候选择 M3E 模型。
 
-注意，一旦选择后，知识库将无法修改向量模型。
-
-![](/imgs/model-m3e2.png)
+   注意，一旦选择后，知识库将无法修改向量模型。
+   
+   ![](/imgs/model-m3e2.png)
 
 2. 导入数据
 3. 搜索测试
 
-![](/imgs/model-m3e3.png)
+   ![](/imgs/model-m3e3.png)
 
 4. 应用绑定知识库
 
-注意，应用只能绑定同一个向量模型的知识库，不能跨模型绑定。并且，需要注意调整相似度，不同向量模型的相似度（距离）会有所区别，需要自行测试实验。
-
-![](/imgs/model-m3e4.png)
+   注意，应用只能绑定同一个向量模型的知识库，不能跨模型绑定。并且，需要注意调整相似度，不同向量模型的相似度（距离）会有所区别，需要自行测试实验。
+   
+   ![](/imgs/model-m3e4.png)
 
 chatglm2 模型的使用方法如下：
 模型选择 chatglm2 即可

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Box, Divider, Flex, useTheme, Button, Skeleton, useDisclosure } from '@chakra-ui/react';
-import { useCopyData } from '@/utils/tools';
+import { useCopyData } from '@/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import { useGlobalStore } from '@/store/global';
+import { feConfigs } from '@/store/static';
 
 const APIKeyModal = dynamic(() => import('@/components/APIKeyModal'), {
   ssr: false
@@ -77,7 +78,10 @@ const API = ({ appId }: { appId: string }) => {
               width: '100%',
               height: '100%'
             }}
-            src="https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh"
+            src={
+              feConfigs?.openAPIUrl ||
+              'https://kjqvjse66l.feishu.cn/docx/DmLedTWtUoNGX8xui9ocdUEjnNh'
+            }
             frameBorder="0"
             onLoad={() => setIsLoaded(true)}
             onError={() => setIsLoaded(true)}

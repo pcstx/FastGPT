@@ -1,11 +1,12 @@
 import type { ChatItemType } from './chat';
 import { ModelNameEnum, ChatModelType, EmbeddingModelType } from '@/constants/model';
 import type { DataType } from './data';
-import { BillSourceEnum, InformTypeEnum } from '@/constants/user';
+import { InformTypeEnum } from '@/constants/user';
 import { TrainingModeEnum } from '@/constants/plugin';
 import type { AppModuleItemType } from './app';
-import { ChatSourceEnum, OutLinkTypeEnum } from '@/constants/chat';
+import { ChatSourceEnum } from '@/constants/chat';
 import { AppTypeEnum } from '@/constants/app';
+import { KbTypeEnum } from '@/constants/dataset';
 
 export interface UserModelSchema {
   _id: string;
@@ -17,6 +18,7 @@ export interface UserModelSchema {
   inviterId?: string;
   openaiKey: string;
   createTime: number;
+  timezone: string;
   openaiAccount?: {
     key: string;
     baseUrl: string;
@@ -48,17 +50,6 @@ export interface AppSchema {
     collection: number;
   };
   modules: AppModuleItemType[];
-  chat?: {
-    relatedKbs: string[];
-    searchSimilarity: number;
-    searchLimit: number;
-    searchEmptyText: string;
-    systemPrompt: string;
-    limitPrompt: string;
-    temperature: number;
-    maxToken: number;
-    chatModel: ChatModelType; // 聊天时用的模型，训练后就是训练的模型
-  };
 }
 
 export interface CollectionSchema {
@@ -79,6 +70,7 @@ export interface TrainingDataSchema {
   a: string;
   source: string;
   file_id: string;
+  billId: string;
 }
 
 export interface ChatSchema {
@@ -111,23 +103,6 @@ export interface ChatItemSchema extends ChatItemType {
   };
 }
 
-export type BillListItemType = {
-  moduleName: string;
-  amount: number;
-  model?: string;
-  tokenLen?: number;
-};
-export interface BillSchema {
-  _id: string;
-  userId: string;
-  appName: string;
-  appId?: string;
-  source: `${BillSourceEnum}`;
-  time: Date;
-  total: number;
-  list: BillListItemType[];
-}
-
 export interface PaySchema {
   _id: string;
   userId: string;
@@ -154,26 +129,17 @@ export interface PromotionRecordSchema {
   amount: number;
 }
 
-export interface OutLinkSchema {
-  _id: string;
-  shareId: string;
-  userId: string;
-  appId: string;
-  name: string;
-  total: number;
-  lastTime: Date;
-  type: `${OutLinkTypeEnum}`;
-}
-
-export interface kbSchema {
+export type kbSchema = {
   _id: string;
   userId: string;
+  parentId: string;
   updateTime: Date;
   avatar: string;
   name: string;
   vectorModel: string;
   tags: string[];
-}
+  type: `${KbTypeEnum}`;
+};
 
 export interface informSchema {
   _id: string;

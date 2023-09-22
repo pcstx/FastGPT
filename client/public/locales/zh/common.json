@@ -2,6 +2,13 @@
   "App": "应用",
   "Cancel": "取消",
   "Confirm": "确认",
+  "Create New": "新建",
+  "Dataset": "知识库",
+  "Export": "导出",
+  "Folder": "文件夹",
+  "Move": "移动",
+  "Name": "名称",
+  "Rename": "重命名",
   "Running": "运行中",
   "Select value is empty": "选择的内容为空",
   "UnKnow": "未知",
@@ -32,12 +39,20 @@
     "My Apps": "我的应用",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
-    "Variable Key Repeat Tip": "变量 key 重复"
+    "Quote Prompt Settings": "引用提示词配置",
+    "Variable Key Repeat Tip": "变量 key 重复",
+    "module": {
+      "Custom Title Tip": "该标题名字会展示在对话过程中"
+    },
+    "modules": {
+      "Title is required": "模块名不能为空"
+    }
   },
   "chat": {
     "Admin Mark Content": "纠正后的回复",
     "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
+    "Confirm to clear share chat histroy": "确认删除所有聊天记录？",
     "Exit Chat": "退出聊天",
     "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
@@ -62,10 +77,30 @@
       "online": "在线使用",
       "share": "外部链接调用",
       "test": "测试"
-    }
-  },
-  "commom": {
-    "Password inconsistency": "两次密码不一致"
+    },
+    "response": {
+      "module cq": "问题分类列表",
+      "module cq result": "分类结果",
+      "module extract description": "提取要求描述",
+      "module extract result": "提取结果",
+      "module historyPreview": "完整记录",
+      "module http body": "请求体",
+      "module http result": "响应体",
+      "module http url": "请求地址",
+      "module limit": "单次搜索上限",
+      "module maxToken": "最大 Tokens",
+      "module model": "模型",
+      "module name": "模型名",
+      "module price": "计费",
+      "module question": "问题",
+      "module quoteList": "引用内容",
+      "module runningTime": "运行时长",
+      "module similarity": "相似度",
+      "module temperature": "温度",
+      "module time": "运行时长",
+      "module tokens": "Tokens"
+    },
+    "retry": "重新生成"
   },
   "common": {
     "Add": "添加",
@@ -74,17 +109,31 @@
     "Copy": "复制",
     "Copy Successful": "复制成功",
     "Course": "",
+    "Custom Title": "自定义标题",
     "Delete": "删除",
+    "Delete Failed": "删除失败",
+    "Delete Success": "删除成功",
+    "Delete Warning": "删除警告",
+    "Edit": "编辑",
+    "Expired Time": "过期时间",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Input": "输入",
+    "Name is empty": "名称不能为空",
     "Output": "输出",
+    "Password inconsistency": "两次密码不一致",
+    "Rename": "重命名",
+    "Search": "搜索",
+    "Status": "状态",
+    "Update Successful": "更新成功",
     "export": ""
   },
   "dataset": {
     "Confirm to delete the data": "确认删除该数据？",
+    "Export": "导出",
     "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
-    "System Data Queue": "排队长度"
+    "System Data Queue": "排队长度",
+    "Training Name": "数据训练"
   },
   "file": {
     "Click to download CSV template": "点击下载 CSV 模板",
@@ -92,9 +141,11 @@
     "Create File": "创建新文件",
     "Create file": "创建文件",
     "Drag and drop": "拖拽文件至此",
+    "Embedding": "索引中",
     "Fetch Url": "链接读取",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "如果导入文件乱码，请将 CSV 转成 UTF-8 编码格式",
     "Parse": "{{name}} 解析中...",
+    "Ready": "可用",
     "Release the mouse to upload the file": "松开鼠标上传文件",
     "Select a maximum of 10 files": "最多选择10个文件",
     "Uploading": "正在上传 {{name}}，进度: {{percent}}%",
@@ -148,6 +199,27 @@
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
     "slogan": "让 AI 更懂你的知识"
   },
+  "kb": {
+    "Chunk Length": "数据总量",
+    "Confirm move the folder": "确认移动到该目录",
+    "Confirm to delete the file": "确认删除该文件及其所有数据？",
+    "Create Folder": "创建文件夹",
+    "Delete Dataset Error": "删除知识库异常",
+    "Edit Folder": "编辑文件夹",
+    "File Size": "文件大小",
+    "Filename": "文件名",
+    "Files": "文件: {{total}}个",
+    "Folder Name": "输入文件夹名称",
+    "Move Failed": "移动出现错误~",
+    "My Dataset": "我的知识库",
+    "No Folder": "没有子目录了~",
+    "Other Data": "其他数据",
+    "Select Dataset": "选择该知识库",
+    "Select Folder": "进入文件夹",
+    "Upload Time": "上传时间",
+    "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
+    "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！"
+  },
   "navbar": {
     "Account": "账号",
     "Apps": "应用",
@@ -155,6 +227,32 @@
     "Datasets": "知识库",
     "Store": "应用市场",
     "Tools": "工具"
+  },
+  "outlink": {
+    "Copy Iframe": "复制嵌入",
+    "Copy Link": "复制",
+    "Create Ifrme Window": "创建嵌入链接",
+    "Create Share Window": "创建免登录窗口",
+    "Delete Link": "删除链接",
+    "Edit Ifrme Link": "更新嵌入链接",
+    "Edit Link": "编辑",
+    "Edit Share Window": "更新分享窗口",
+    "Link Name": "分享链接的名字",
+    "Link is empty": "",
+    "Max credit": "最大金额",
+    "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
+    "QPM": "",
+    "QPM Tips": "每个 IP 每分钟最多提问多少次",
+    "QPM is empty": "QPM 不能为空",
+    "Response Detail": "返回详情",
+    "Response Detail tips": "是否需要返回引用、完整上下文等详细数据"
+  },
+  "system": {
+    "Help Document": "帮助文档"
+  },
+  "template": {
+    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{file_id}} - 来源文件名，{{index}} - 第n个引用，他们都是可选的，下面是默认值：\n{{default}}",
+    "Quote Prompt Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以用 {{quote}} 来插入引用内容，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {
     "Account": "账号",
@@ -168,6 +266,7 @@
     "Copy invite url": "复制邀请链接",
     "Invite Url": "邀请链接",
     "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。",
+    "Language": "语言",
     "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
@@ -184,6 +283,7 @@
     "Sign Out": "登出",
     "Source": "来源",
     "Time": "时间",
+    "Timezone": "时区",
     "Total Amount": "总金额",
     "Update Password": "修改密码",
     "Update password failed": "修改密码异常",

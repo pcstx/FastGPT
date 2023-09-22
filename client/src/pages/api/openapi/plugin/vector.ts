@@ -3,11 +3,12 @@ import { jsonRes } from '@/service/response';
 import { authBalanceByUid, authUser } from '@/service/utils/auth';
 import { withNextCors } from '@/service/utils/tools';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
-import { pushGenerateVectorBill } from '@/service/events/pushBill';
+import { pushGenerateVectorBill } from '@/service/common/bill/push';
 
 type Props = {
   model: string;
   input: string[];
+  billId?: string;
 };
 type Response = {
   tokenLen: number;
@@ -38,7 +39,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 export async function getVector({
   model = 'text-embedding-ada-002',
   userId,
-  input
+  input,
+  billId
 }: { userId?: string } & Props) {
   userId && (await authBalanceByUid(userId));
 
@@ -68,8 +70,9 @@ export async function getVector({
     )
     .then(async (res) => {
       if (!res.data?.data?.[0]?.embedding) {
+        console.log(res.data);
         // @ts-ignore
-        return Promise.reject(res.data?.error?.message || 'Embedding API Error');
+        return Promise.reject(res.data?.err?.message || 'Embedding API Error');
       }
       return {
         tokenLen: res.data.usage.total_tokens || 0,
@@ -81,7 +84,8 @@ export async function getVector({
     pushGenerateVectorBill({
       userId,
       tokenLen: result.tokenLen,
-      model
+      model,
+      billId
     });
 
   return result;

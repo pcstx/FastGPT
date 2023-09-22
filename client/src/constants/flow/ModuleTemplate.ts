@@ -20,18 +20,18 @@ import { ContextExtractEnum, HttpPropsEnum } from './flowField';
 export const ChatModelSystemTip =
   '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}';
 export const ChatModelLimitTip =
-  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"';
+  '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。不建议内容太长，会影响上下文，可使用变量，例如 {{language}}。可在文档中找到对应的限定例子';
 export const userGuideTip = '可以添加特殊的对话前后引导模块，更好的让用户进行对话';
 export const welcomeTextTip =
   '每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题';
 
 export const VariableModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.variable,
   logo: '/imgs/module/variable.png',
   name: '全局变量',
   intro: '可以在对话开始前，要求用户填写一些内容作为本轮对话的变量。该模块位于开场引导之后。',
   description:
     '全局变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等',
-  flowType: FlowModuleTypeEnum.variable,
   inputs: [
     {
       key: SystemInputEnum.variables,
@@ -43,10 +43,10 @@ export const VariableModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const UserGuideModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.userGuide,
   logo: '/imgs/module/userGuide.png',
   name: '用户引导',
   intro: userGuideTip,
-  flowType: FlowModuleTypeEnum.userGuide,
   inputs: [
     {
       key: SystemInputEnum.welcomeText,
@@ -57,10 +57,10 @@ export const UserGuideModule: FlowModuleTemplateType = {
   outputs: []
 };
 export const UserInputModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.questionInput,
   logo: '/imgs/module/userChatInput.png',
   name: '用户问题(对话入口)',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-  flowType: FlowModuleTypeEnum.questionInput,
   inputs: [
     {
       key: SystemInputEnum.userChatInput,
@@ -79,10 +79,10 @@ export const UserInputModule: FlowModuleTemplateType = {
   ]
 };
 export const HistoryModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.historyNode,
   logo: '/imgs/module/history.png',
   name: '聊天记录',
   intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
-  flowType: FlowModuleTypeEnum.historyNode,
   inputs: [
     {
       key: 'maxContext',
@@ -110,10 +110,10 @@ export const HistoryModule: FlowModuleTemplateType = {
 };
 
 export const ChatModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.chatNode,
   logo: '/imgs/module/AI.png',
   name: 'AI 对话',
   intro: 'AI 大模型对话',
-  flowType: FlowModuleTypeEnum.chatNode,
   showStatus: true,
   inputs: [
     {
@@ -156,26 +156,34 @@ export const ChatModule: FlowModuleTemplateType = {
       key: 'systemPrompt',
       type: FlowInputItemTypeEnum.textarea,
       label: '系统提示词',
+      max: 300,
       valueType: FlowValueTypeEnum.string,
       description: ChatModelSystemTip,
       placeholder: ChatModelSystemTip,
       value: ''
     },
     {
-      key: 'limitPrompt',
-      type: FlowInputItemTypeEnum.textarea,
+      key: 'quoteTemplate',
+      type: FlowInputItemTypeEnum.hidden,
+      label: '引用内容模板',
       valueType: FlowValueTypeEnum.string,
-      label: '限定词',
-      description: ChatModelLimitTip,
-      placeholder: ChatModelLimitTip,
+      value: ''
+    },
+    {
+      key: 'quotePrompt',
+      type: FlowInputItemTypeEnum.hidden,
+      label: '引用内容提示词',
+      valueType: FlowValueTypeEnum.string,
       value: ''
     },
     Input_Template_TFSwitch,
     {
       key: 'quoteQA',
-      type: FlowInputItemTypeEnum.target,
+      type: FlowInputItemTypeEnum.custom,
       label: '引用内容',
-      valueType: FlowValueTypeEnum.kbQuote
+      description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
+      valueType: FlowValueTypeEnum.kbQuote,
+      connected: false
     },
     Input_Template_History,
     Input_Template_UserChatInput
@@ -201,10 +209,10 @@ export const ChatModule: FlowModuleTemplateType = {
 };
 
 export const KBSearchModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.kbSearchNode,
   logo: '/imgs/module/db.png',
   name: '知识库搜索',
   intro: '去知识库中搜索对应的答案。可作为 AI 对话引用参考。',
-  flowType: FlowModuleTypeEnum.kbSearchNode,
   showStatus: true,
   inputs: [
     {
@@ -272,11 +280,11 @@ export const KBSearchModule: FlowModuleTemplateType = {
 };
 
 export const AnswerModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.answerNode,
   logo: '/imgs/module/reply.png',
   name: '指定回复',
   intro: '该模块可以直接回复一段指定的内容。常用于引导、提示',
   description: '该模块可以直接回复一段指定的内容。常用于引导、提示',
-  flowType: FlowModuleTypeEnum.answerNode,
   inputs: [
     Input_Template_TFSwitch,
     {
@@ -300,40 +308,13 @@ export const AnswerModule: FlowModuleTemplateType = {
     }
   ]
 };
-export const TFSwitchModule: FlowModuleTemplateType = {
-  logo: '',
-  name: 'TF开关',
-  intro: '可以判断输入的内容为 True 或者 False，从而执行不同操作。',
-  flowType: FlowModuleTypeEnum.tfSwitchNode,
-  inputs: [
-    {
-      key: SystemInputEnum.switch,
-      type: FlowInputItemTypeEnum.target,
-      label: '输入'
-    }
-  ],
-  outputs: [
-    {
-      key: 'true',
-      label: 'True',
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    },
-    {
-      key: 'false',
-      label: 'False',
-      type: FlowOutputItemTypeEnum.source,
-      targets: []
-    }
-  ]
-};
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.classifyQuestion,
   logo: '/imgs/module/cq.png',
   name: '问题分类',
   intro: '可以判断用户问题属于哪方面问题，从而执行不同的操作。',
   description:
     '根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于 laf 通用问题\n类型3: 关于 laf 代码问题\n类型4: 其他问题',
-  flowType: FlowModuleTypeEnum.classifyQuestion,
   showStatus: true,
   inputs: [
     {
@@ -390,11 +371,11 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   ]
 };
 export const ContextExtractModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.contentExtract,
   logo: '/imgs/module/extract.png',
   name: '文本内容提取',
   intro: '从文本中提取出指定格式的数据',
   description: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
-  flowType: FlowModuleTypeEnum.contentExtract,
   showStatus: true,
   inputs: [
     Input_Template_TFSwitch,
@@ -450,11 +431,11 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   ]
 };
 export const HttpModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.httpRequest,
   logo: '/imgs/module/http.png',
   name: 'HTTP模块',
   intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   description: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
-  flowType: FlowModuleTypeEnum.httpRequest,
   showStatus: true,
   inputs: [
     {
@@ -479,11 +460,11 @@ export const HttpModule: FlowModuleTemplateType = {
   ]
 };
 export const EmptyModule: FlowModuleTemplateType = {
+  flowType: FlowModuleTypeEnum.empty,
   logo: '/imgs/module/cq.png',
   name: '该模块已被移除',
   intro: '',
   description: '',
-  flowType: FlowModuleTypeEnum.empty,
   inputs: [],
   outputs: []
 };
@@ -658,18 +639,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
-            value: '',
-            connected: true
-          },
-          {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
             value: '',
             connected: true
           },
@@ -1010,18 +979,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             connected: true
           },
           {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '',
-            connected: true
-          },
-          {
             key: 'switch',
             type: 'target',
             label: '触发器',
@@ -1313,18 +1270,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             value: '',
-            connected: true
-          },
-          {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value: '将我的问题直接翻译成英语{{language}}',
             connected: true
           },
           {
@@ -1697,19 +1642,6 @@ export const appTemplates: (AppItemType & { avatar: string; intro: string })[] =
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             value: '知识库是关于 laf 的内容。',
-            connected: true
-          },
-          {
-            key: 'limitPrompt',
-            type: 'textarea',
-            valueType: 'string',
-            label: '限定词',
-            description:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            placeholder:
-              '限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。可使用变量，例如 {{language}}。引导例子:\n1. 知识库是关于 Laf 的介绍，参考知识库回答问题，与 "Laf" 无关内容，直接回复: "我不知道"。\n2. 你仅回答关于 "xxx" 的问题，其他问题回复: "xxxx"',
-            value:
-              '我的问题都是关于 laf 的。根据知识库回答我的问题，与 laf 无关问题，直接回复：“我不清楚，我仅能回答 laf 相关的问题。”。',
             connected: true
           },
           {

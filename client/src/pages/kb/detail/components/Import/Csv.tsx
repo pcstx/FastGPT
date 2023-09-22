@@ -3,19 +3,20 @@ import { Box, Flex, Button, useTheme, Image } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
-import { postKbDataFromList } from '@/api/plugins/kb';
 import { getErrText } from '@/utils/tools';
 import MyIcon from '@/components/Icon';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
+import { putMarkFilesUsed } from '@/api/core/dataset/file';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.csv';
 
 const CsvImport = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
+  const { kbDetail } = useDatasetStore();
   const maxToken = kbDetail.vectorModel?.maxToken || 2000;
 
   const theme = useTheme();
@@ -37,12 +38,15 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
 
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
+      // mark the file is used
+      await putMarkFilesUsed({ fileIds: files.map((file) => file.id) });
+
       const chunks = files
         .map((file) => file.chunks)
         .flat()
         .filter((item) => item?.q);
 
-      const filterChunks = chunks.filter((item) => item.q.length < maxToken);
+      const filterChunks = chunks.filter((item) => item.q.length < maxToken * 1.5);
 
       if (filterChunks.length !== chunks.length) {
         toast({
@@ -51,29 +55,25 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
         });
       }
 
-      // subsection import
-      let success = 0;
-      const step = 300;
-      for (let i = 0; i < filterChunks.length; i += step) {
-        const { insertLen } = await postKbDataFromList({
-          kbId,
-          data: filterChunks.slice(i, i + step),
-          mode: TrainingModeEnum.index
-        });
-
-        success += insertLen;
-        setSuccessChunks(success);
-      }
+      // upload data
+      const { insertLen } = await chunksUpload({
+        kbId,
+        chunks,
+        mode: TrainingModeEnum.index,
+        onUploading: (insertLen) => {
+          setSuccessChunks(insertLen);
+        }
+      });
 
       toast({
-        title: `去重后共导入 ${success} 条数据，请耐心等待训练.`,
+        title: `去重后共导入 ${insertLen} 条数据，请耐心等待训练.`,
         status: 'success'
       });
 
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },
@@ -206,7 +206,7 @@ const CsvImport = ({ kbId }: { kbId: string }) => {
                     />
                   </Flex>
                   <Box px={4} fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
-                    {`q: ${item.q}\na: ${item.a}`}
+                    {`${item.q}\n${item.a}`}
                   </Box>
                 </Box>
               ))

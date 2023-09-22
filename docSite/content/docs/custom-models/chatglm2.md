@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 100
+weight: 910
 ---
 
 ## 前言
@@ -27,7 +27,7 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 因此推荐配置如下：
 
-{{< table "table-hover table-striped" >}}
+{{< table "table-hover table-striped-columns" >}}
 | 类型 | 内存 | 显存 | 硬盘空间 | 启动命令 |
 |------|---------|---------|----------|--------------------------|
 | fp16 | >=16GB | >=16GB | >=25GB | python openai_api.py 16 |
@@ -63,12 +63,17 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 **镜像和端口**
 
-镜像名: `stawky/chatglm2:latest`  
-国内镜像名: `registry.cn-hangzhou.aliyuncs.com/kbgpt/chatglm2:latest`
-端口号: 6006
-镜像默认 sk-key: `sk-aaabbbcccdddeeefffggghhhiiijjjkkk`
++ 镜像名: `stawky/chatglm2:latest`  
++ 国内镜像名: `registry.cn-hangzhou.aliyuncs.com/fastgpt_docker/chatglm2:latest`
++ 端口号: 6006
 
-## 接入 OneAPI
+```
+# 设置安全凭证（即oneapi中的渠道密钥）
+默认值：sk-aaabbbcccdddeeefffggghhhiiijjjkkk
+也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。
+```
+
+## 接入 One API
 
 为 chatglm2 添加一个渠道，参数如下：
 
@@ -90,7 +95,7 @@ curl --location --request POST 'https://domain/v1/chat/completions' \
 }'
 ```
 
-Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneAPI 填写的自定义模型。
+Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One API 填写的自定义模型。
 
 ## 接入 FastGPT
 
@@ -114,4 +119,5 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 OneA
 ## 测试使用
 
 chatglm2 模型的使用方法如下：
+
 模型选择 chatglm2 即可

@@ -1,18 +1,20 @@
 import { PgClient } from '@/service/pg';
 import type { ChatHistoryItemResType } from '@/types/chat';
-import { ChatModuleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { countModelPrice } from '@/service/events/pushBill';
-import type { SelectedKbType } from '@/types/plugin';
+import { countModelPrice } from '@/service/common/bill/push';
+import type { SelectedDatasetType } from '@/types/core/dataset';
 import type { QuoteItemType } from '@/types/chat';
-import { PgTrainingTableName } from '@/constants/plugin';
+import { PgDatasetTableName } from '@/constants/plugin';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
 
-type KBSearchProps = {
-  kbList: SelectedKbType;
+type KBSearchProps = ModuleDispatchProps<{
+  kbList: SelectedDatasetType;
   similarity: number;
   limit: number;
   userChatInput: string;
-};
+}>;
 export type KBSearchResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   isEmpty?: boolean;
@@ -21,7 +23,10 @@ export type KBSearchResponse = {
 };
 
 export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSearchResponse> {
-  const { kbList = [], similarity = 0.4, limit = 5, userChatInput } = props as KBSearchProps;
+  const {
+    moduleName,
+    inputs: { kbList = [], similarity = 0.4, limit = 5, userChatInput }
+  } = props as KBSearchProps;
 
   if (kbList.length === 0) {
     return Promise.reject("You didn't choose the knowledge base");
@@ -42,7 +47,7 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
   const res: any = await PgClient.query(
     `BEGIN;
     SET LOCAL ivfflat.probes = ${global.systemEnv.pgIvfflatProbe || 10};
-    select kb_id,id,q,a,source,file_id from ${PgTrainingTableName} where kb_id IN (${kbList
+    select kb_id,id,q,a,source,file_id from ${PgDatasetTableName} where kb_id IN (${kbList
       .map((item) => `'${item.kbId}'`)
       .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
       vectors[0]
@@ -57,7 +62,8 @@ export async function dispatchKBSearch(props: Record<string, any>): Promise<KBSe
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      moduleName: ChatModuleEnum.KBSearch,
+      moduleType: FlowModuleTypeEnum.kbSearchNode,
+      moduleName,
       price: countModelPrice({ model: vectorModel.model, tokens: tokenLen }),
       model: vectorModel.name,
       tokens: tokenLen,

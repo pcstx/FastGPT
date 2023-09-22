@@ -2,18 +2,11 @@ import mongoose, { Types } from 'mongoose';
 import fs from 'fs';
 import fsp from 'fs/promises';
 import { ERROR_ENUM } from '../errorCode';
+import type { GSFileInfoType } from '@/types/common/file';
 
 enum BucketNameEnum {
   dataset = 'dataset'
 }
-
-type FileInfo = {
-  id: string;
-  filename: string;
-  size: number;
-  contentType: string;
-  encoding: string;
-};
 
 export class GridFSStorage {
   readonly type = 'gridfs';
@@ -23,6 +16,9 @@ export class GridFSStorage {
   constructor(bucket: `${BucketNameEnum}`, uid: string) {
     this.bucket = bucket;
     this.uid = String(uid);
+  }
+  Collection() {
+    return mongoose.connection.db.collection(`${this.bucket}.files`);
   }
   GridFSBucket() {
     return new mongoose.mongo.GridFSBucket(mongoose.connection.db, {
@@ -64,7 +60,7 @@ export class GridFSStorage {
 
     return String(stream.id);
   }
-  async findAndAuthFile(id: string): Promise<FileInfo> {
+  async findAndAuthFile(id: string): Promise<GSFileInfoType> {
     if (!id) {
       return Promise.reject(`id is empty`);
     }
@@ -88,6 +84,7 @@ export class GridFSStorage {
       filename: file.filename,
       contentType: file.metadata?.contentType,
       encoding: file.metadata?.encoding,
+      uploadDate: file.uploadDate,
       size: file.length
     };
   }

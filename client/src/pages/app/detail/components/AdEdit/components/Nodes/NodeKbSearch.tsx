@@ -1,27 +1,27 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import { FlowModuleItemType } from '@/types/flow';
 import { Flex, Box, Button, useTheme, useDisclosure, Grid } from '@chakra-ui/react';
-import { useUserStore } from '@/store/user';
+import { useDatasetStore } from '@/store/dataset';
 import { useQuery } from '@tanstack/react-query';
 import NodeCard from '../modules/NodeCard';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
-import { KBSelectModal } from '../../../KBSelectModal';
-import type { SelectedKbType } from '@/types/plugin';
+import { DatasetSelectModal } from '../../../DatasetSelectModal';
+import type { SelectedDatasetType } from '@/types/core/dataset';
 import Avatar from '@/components/Avatar';
 
 const KBSelect = ({
   activeKbs = [],
   onChange
 }: {
-  activeKbs: SelectedKbType;
-  onChange: (e: SelectedKbType) => void;
+  activeKbs: SelectedDatasetType;
+  onChange: (e: SelectedDatasetType) => void;
 }) => {
   const theme = useTheme();
-  const { myKbList, loadKbList } = useUserStore();
+  const { allDatasets, loadAllDatasets } = useDatasetStore();
   const {
     isOpen: isOpenKbSelect,
     onOpen: onOpenKbSelect,
@@ -29,11 +29,11 @@ const KBSelect = ({
   } = useDisclosure();
 
   const showKbList = useMemo(
-    () => myKbList.filter((item) => activeKbs.find((kb) => kb.kbId === item._id)),
-    [myKbList, activeKbs]
+    () => allDatasets.filter((item) => activeKbs.find((kb) => kb.kbId === item._id)),
+    [allDatasets, activeKbs]
   );
 
-  useQuery(['initkb'], loadKbList);
+  useQuery(['loadAllDatasets'], loadAllDatasets);
 
   return (
     <>
@@ -57,14 +57,12 @@ const KBSelect = ({
           </Flex>
         ))}
       </Grid>
-      {isOpenKbSelect && (
-        <KBSelectModal
-          kbList={myKbList}
-          activeKbs={activeKbs}
-          onChange={onChange}
-          onClose={onCloseKbSelect}
-        />
-      )}
+      <DatasetSelectModal
+        isOpen={isOpenKbSelect}
+        activeKbs={activeKbs}
+        onChange={onChange}
+        onClose={onCloseKbSelect}
+      />
     </>
   );
 };

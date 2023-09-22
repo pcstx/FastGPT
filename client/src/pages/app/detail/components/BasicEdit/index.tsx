@@ -56,18 +56,22 @@ import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 
 import { addVariable } from '../VariableEditModal';
-import { KBSelectModal, KbParamsModal } from '../KBSelectModal';
+import { KbParamsModal } from '../DatasetSelectModal';
 import { AppTypeEnum } from '@/constants/app';
+import { useDatasetStore } from '@/store/dataset';
 
 const VariableEditModal = dynamic(() => import('../VariableEditModal'));
 const InfoModal = dynamic(() => import('../InfoModal'));
+const DatasetSelectModal = dynamic(() => import('../DatasetSelectModal'));
+const AIChatSettingsModal = dynamic(() => import('../AIChatSettingsModal'));
 
 const Settings = ({ appId }: { appId: string }) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { appDetail, updateAppDetail, loadKbList, myKbList } = useUserStore();
+  const { appDetail, updateAppDetail } = useUserStore();
+  const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useGlobalStore();
 
   const [editVariable, setEditVariable] = useState<VariableItemType>();
@@ -99,6 +103,11 @@ const Settings = ({ appId }: { appId: string }) => {
   });
 
   const {
+    isOpen: isOpenAIChatSetting,
+    onOpen: onOpenAIChatSetting,
+    onClose: onCloseAIChatSetting
+  } = useDisclosure();
+  const {
     isOpen: isOpenKbSelect,
     onOpen: onOpenKbSelect,
     onClose: onCloseKbSelect
@@ -122,8 +131,8 @@ const Settings = ({ appId }: { appId: string }) => {
     );
   }, [getValues, refresh]);
   const selectedKbList = useMemo(
-    () => myKbList.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
-    [myKbList, kbList]
+    () => allDatasets.filter((item) => kbList.find((kb) => kb.kbId === item._id)),
+    [allDatasets, kbList]
   );
 
   /* 点击删除 */
@@ -167,7 +176,7 @@ const Settings = ({ appId }: { appId: string }) => {
     appModule2Form();
   }, [appModule2Form]);
 
-  useQuery(['initkb', appId], () => loadKbList());
+  useQuery(['loadAllDatasets'], loadAllDatasets);
 
   const BoxStyles: BoxProps = {
     bg: 'myWhite.200',
@@ -304,6 +313,23 @@ const Settings = ({ appId }: { appId: string }) => {
         </Button>
       </Flex>
 
+      {/* welcome */}
+      <Box mt={5} {...BoxStyles}>
+        <Flex alignItems={'center'}>
+          <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
+          <Box mx={2}>对话开场白</Box>
+          <MyTooltip label={welcomeTextTip} forceShow>
+            <QuestionOutlineIcon />
+          </MyTooltip>
+        </Flex>
+        <Textarea
+          mt={2}
+          rows={5}
+          placeholder={welcomeTextTip}
+          borderColor={'myGray.100'}
+          {...register('guide.welcome.text')}
+        />
+      </Box>
       {/* variable */}
       <Box mt={2} {...BoxStyles}>
         <Flex alignItems={'center'}>
@@ -315,51 +341,61 @@ const Settings = ({ appId }: { appId: string }) => {
             +&ensp;新增
           </Flex>
         </Flex>
-        <Box mt={2} borderRadius={'lg'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
-          <TableContainer>
-            <Table bg={'white'}>
-              <Thead>
-                <Tr>
-                  <Th>变量名</Th>
-                  <Th>变量 key</Th>
-                  <Th>必填</Th>
-                  <Th></Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {variables.map((item, index) => (
-                  <Tr key={item.id}>
-                    <Td>{item.label} </Td>
-                    <Td>{item.key}</Td>
-                    <Td>{item.required ? '✔' : ''}</Td>
-                    <Td>
-                      <MyIcon
-                        mr={3}
-                        name={'settingLight'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => setEditVariable(item)}
-                      />
-                      <MyIcon
-                        name={'delete'}
-                        w={'16px'}
-                        cursor={'pointer'}
-                        onClick={() => removeVariable(index)}
-                      />
-                    </Td>
+        {variables.length > 0 && (
+          <Box
+            mt={2}
+            borderRadius={'lg'}
+            overflow={'hidden'}
+            borderWidth={'1px'}
+            borderBottom="none"
+          >
+            <TableContainer>
+              <Table bg={'white'}>
+                <Thead>
+                  <Tr>
+                    <Th>变量名</Th>
+                    <Th>变量 key</Th>
+                    <Th>必填</Th>
+                    <Th></Th>
                   </Tr>
-                ))}
-              </Tbody>
-            </Table>
-          </TableContainer>
-        </Box>
+                </Thead>
+                <Tbody>
+                  {variables.map((item, index) => (
+                    <Tr key={item.id}>
+                      <Td>{item.label} </Td>
+                      <Td>{item.key}</Td>
+                      <Td>{item.required ? '✔' : ''}</Td>
+                      <Td>
+                        <MyIcon
+                          mr={3}
+                          name={'settingLight'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => setEditVariable(item)}
+                        />
+                        <MyIcon
+                          name={'delete'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => removeVariable(index)}
+                        />
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
+        )}
       </Box>
 
       {/* model */}
       <Box mt={5} {...BoxStyles}>
         <Flex alignItems={'center'}>
           <Avatar src={'/imgs/module/AI.png'} w={'18px'} />
-          <Box ml={2}>AI 配置</Box>
+          <Box ml={2} flex={1}>
+            AI 配置
+          </Box>
         </Flex>
 
         <Flex alignItems={'center'} mt={5}>
@@ -432,20 +468,6 @@ const Settings = ({ appId }: { appId: string }) => {
             {...register('chatModel.systemPrompt')}
           ></Textarea>
         </Flex>
-        <Flex mt={5} alignItems={'flex-start'}>
-          <Box {...LabelStyles}>
-            限定词
-            <MyTooltip label={ChatModelLimitTip} forceShow>
-              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-            </MyTooltip>
-          </Box>
-          <Textarea
-            rows={5}
-            placeholder={ChatModelLimitTip}
-            borderColor={'myGray.100'}
-            {...register('chatModel.limitPrompt')}
-          ></Textarea>
-        </Flex>
       </Box>
 
       {/* kb */}
@@ -462,6 +484,10 @@ const Settings = ({ appId }: { appId: string }) => {
           <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbParams}>
             <MyIcon name={'edit'} w={'14px'} mr={1} />
             参数
+          </Flex>
+          <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
+            <MyIcon mr={1} name={'settingLight'} w={'14px'} />
+            提示词
           </Flex>
         </Flex>
         <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
@@ -498,24 +524,6 @@ const Settings = ({ appId }: { appId: string }) => {
         </Grid>
       </Box>
 
-      {/* welcome */}
-      <Box mt={5} {...BoxStyles}>
-        <Flex alignItems={'center'}>
-          <Avatar src={'/imgs/module/userGuide.png'} w={'18px'} />
-          <Box mx={2}>对话开场白</Box>
-          <MyTooltip label={welcomeTextTip} forceShow>
-            <QuestionOutlineIcon />
-          </MyTooltip>
-        </Flex>
-        <Textarea
-          mt={2}
-          rows={5}
-          placeholder={welcomeTextTip}
-          borderColor={'myGray.100'}
-          {...register('guide.welcome.text')}
-        />
-      </Box>
-
       <ConfirmSaveModal />
       <ConfirmDelModal />
       {settingAppInfo && (
@@ -546,9 +554,19 @@ const Settings = ({ appId }: { appId: string }) => {
           }}
         />
       )}
+      {isOpenAIChatSetting && (
+        <AIChatSettingsModal
+          onClose={onCloseAIChatSetting}
+          onSuccess={(e) => {
+            setValue('chatModel', e);
+            onCloseAIChatSetting();
+          }}
+          defaultData={getValues('chatModel')}
+        />
+      )}
       {isOpenKbSelect && (
-        <KBSelectModal
-          kbList={myKbList}
+        <DatasetSelectModal
+          isOpen={isOpenKbSelect}
           activeKbs={selectedKbList.map((item) => ({
             kbId: item._id,
             vectorModel: item.vectorModel
@@ -557,6 +575,7 @@ const Settings = ({ appId }: { appId: string }) => {
           onChange={replaceKbList}
         />
       )}
+
       {isOpenKbParams && (
         <KbParamsModal
           searchEmptyText={getValues('kb.searchEmptyText')}

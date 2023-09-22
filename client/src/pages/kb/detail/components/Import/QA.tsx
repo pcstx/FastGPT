@@ -3,7 +3,6 @@ import { Box, Flex, Button, useTheme, Image, Input } from '@chakra-ui/react';
 import { useToast } from '@/hooks/useToast';
 import { useConfirm } from '@/hooks/useConfirm';
 import { useMutation } from '@tanstack/react-query';
-import { postKbDataFromList } from '@/api/plugins/kb';
 import { splitText2Chunks } from '@/utils/file';
 import { getErrText } from '@/utils/tools';
 import { formatPrice } from '@/utils/user';
@@ -12,10 +11,14 @@ import MyIcon from '@/components/Icon';
 import CloseIcon from '@/components/Icon/close';
 import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
 import { TrainingModeEnum } from '@/constants/plugin';
 import FileSelect, { type FileItemType } from './FileSelect';
 import { useRouter } from 'next/router';
+import { putMarkFilesUsed } from '@/api/core/dataset/file';
+import { Prompt_AgentQA } from '@/prompts/core/agent';
+import { replaceVariable } from '@/utils/common/tools/text';
+import { chunksUpload } from '@/utils/web/core/dataset';
 
 const fileExtension = '.txt, .doc, .docx, .pdf, .md';
 
@@ -40,41 +43,51 @@ const QAImport = ({ kbId }: { kbId: string }) => {
 
   // price count
   const price = useMemo(() => {
-    return formatPrice(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice * 1.3);
+    const filesToken = files.reduce((sum, file) => sum + file.tokens, 0);
+    const promptTokens = files.reduce((sum, file) => sum + file.chunks.length, 0) * 139;
+    const totalToken = (filesToken + promptTokens) * 2;
+
+    return formatPrice(totalToken * unitPrice);
   }, [files, unitPrice]);
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
   });
 
+  const previewQAPrompt = useMemo(() => {
+    return replaceVariable(Prompt_AgentQA.prompt, {
+      theme: prompt || Prompt_AgentQA.defaultTheme
+    });
+  }, [prompt]);
+
   const { mutate: onclickUpload, isLoading: uploading } = useMutation({
     mutationFn: async () => {
       const chunks = files.map((file) => file.chunks).flat();
 
-      // subsection import
-      let success = 0;
-      const step = 200;
-      for (let i = 0; i < chunks.length; i += step) {
-        const { insertLen } = await postKbDataFromList({
-          kbId,
-          data: chunks.slice(i, i + step),
-          mode: TrainingModeEnum.qa,
-          prompt: prompt || '下面是一段长文本'
-        });
+      // mark the file is used
+      await putMarkFilesUsed({ fileIds: files.map((file) => file.id) });
 
-        success += insertLen;
-        setSuccessChunks(success);
-      }
+      // upload data
+      const { insertLen } = await chunksUpload({
+        kbId,
+        chunks,
+        mode: TrainingModeEnum.qa,
+        prompt: previewQAPrompt,
+        rate: 10,
+        onUploading: (insertLen) => {
+          setSuccessChunks(insertLen);
+        }
+      });
 
       toast({
-        title: `共导入 ${success} 条数据，请耐心等待训练.`,
+        title: `共导入 ${insertLen} 条数据，请耐心等待训练.`,
         status: 'success'
       });
 
       router.replace({
         query: {
           kbId,
-          currentTab: 'data'
+          currentTab: 'dataset'
         }
       });
     },
@@ -97,9 +110,11 @@ const QAImport = ({ kbId }: { kbId: string }) => {
           return {
             ...file,
             tokens: splitRes.tokens,
-            chunks: file.chunks.map((chunk, i) => ({
-              ...chunk,
-              q: splitRes.chunks[i]
+            chunks: splitRes.chunks.map((chunk) => ({
+              a: '',
+              source: file.filename,
+              file_id: file.id,
+              q: chunk
             }))
           };
         })
@@ -185,21 +200,19 @@ const QAImport = ({ kbId }: { kbId: string }) => {
             <Box py={5}>
               <Box mb={2}>
                 QA 拆分引导词{' '}
-                <MyTooltip
-                  label={`可输入关于文件内容的范围介绍，例如:\n1. Laf 的介绍\n2. xxx的简历\n最终会补全为: 关于{输入的内容}`}
-                  forceShow
-                >
-                  <QuestionOutlineIcon ml={1} />
+                <MyTooltip label={previewQAPrompt} forceShow>
+                  <InfoOutlineIcon ml={1} />
                 </MyTooltip>
               </Box>
               <Flex alignItems={'center'} fontSize={'sm'}>
-                <Box mr={2}>关于</Box>
+                <Box mr={2}>文件主题</Box>
                 <Input
+                  fontSize={'sm'}
                   flex={1}
-                  placeholder={'Laf 云函数的介绍'}
+                  placeholder={Prompt_AgentQA.defaultTheme}
                   bg={'myWhite.500'}
                   defaultValue={prompt}
-                  onBlur={(e) => (e.target.value ? setPrompt(`关于"${e.target.value}"`) : '')}
+                  onChange={(e) => setPrompt(e.target.value || '')}
                 />
               </Flex>
             </Box>

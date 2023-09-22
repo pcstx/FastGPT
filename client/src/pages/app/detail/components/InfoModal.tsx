@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import { AppSchema } from '@/types/mongoSchema';
 import { useToast } from '@/hooks/useToast';
 import { useSelectFile } from '@/hooks/useSelectFile';
-import { compressImg } from '@/utils/file';
+import { compressImg } from '@/utils/web/file';
 import { getErrText } from '@/utils/tools';
 import { useUserStore } from '@/store/user';
 import { useRequest } from '@/hooks/useRequest';
@@ -55,7 +55,6 @@ const InfoModal = ({
         name: data.name,
         avatar: data.avatar,
         intro: data.intro,
-        chat: data.chat,
         share: data.share
       });
     },

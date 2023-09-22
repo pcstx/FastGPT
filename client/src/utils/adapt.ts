@@ -1,5 +1,5 @@
 import { formatPrice } from './user';
-import type { BillSchema } from '../types/mongoSchema';
+import type { BillSchema } from '@/types/common/bill';
 import type { UserBillType } from '@/types/user';
 import { ChatItemType } from '@/types/chat';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
@@ -92,8 +92,8 @@ export const appModule2FlowNode = ({
 
   // replace item data
   const moduleItem: FlowModuleItemType = {
-    ...item,
     ...template,
+    ...item,
     inputs: concatInputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;

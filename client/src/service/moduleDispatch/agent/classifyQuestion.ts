@@ -1,38 +1,72 @@
-import { adaptChatItem_openAI } from '@/utils/plugin/openai';
-import { ChatContextFilter } from '@/service/utils/chat/index';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
-import { ChatModuleEnum, ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import type { ClassifyQuestionAgentItemType } from '@/types/app';
-import { countModelPrice } from '@/service/events/pushBill';
-import { UserModelSchema } from '@/types/mongoSchema';
-import { getModel } from '@/service/utils/data';
 import { SystemInputEnum } from '@/constants/app';
 import { SpecialInputKeyEnum } from '@/constants/flow';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
+import { replaceVariable } from '@/utils/common/tools/text';
+import { Prompt_CQJson } from '@/prompts/core/agent';
+import { defaultCQModel } from '@/pages/api/system/getInitData';
 
-export type CQProps = {
+type Props = ModuleDispatchProps<{
   systemPrompt?: string;
   history?: ChatItemType[];
   [SystemInputEnum.userChatInput]: string;
-  userOpenaiAccount: UserModelSchema['openaiAccount'];
   [SpecialInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
-};
-export type CQResponse = {
+}>;
+type CQResponse = {
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
   [key: string]: any;
 };
 
-const agentModel = 'gpt-3.5-turbo';
 const agentFunName = 'agent_user_question';
-const maxTokens = 3000;
 
 /* request openai chat */
-export const dispatchClassifyQuestion = async (props: Record<string, any>): Promise<CQResponse> => {
-  const { agents, systemPrompt, history = [], userChatInput, userOpenaiAccount } = props as CQProps;
+export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
+  const {
+    moduleName,
+    userOpenaiAccount,
+    inputs: { agents, userChatInput }
+  } = props as Props;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
+
+  const cqModel = global.cqModel || defaultCQModel;
+
+  const { arg, tokens } = await (async () => {
+    if (cqModel.functionCall) {
+      return functionCall(props);
+    }
+    return completions(props);
+  })();
+
+  const result = agents.find((item) => item.key === arg?.type) || agents[0];
+
+  return {
+    [result.key]: 1,
+    [TaskResponseKeyEnum.responseData]: {
+      moduleType: FlowModuleTypeEnum.classifyQuestion,
+      moduleName,
+      price: userOpenaiAccount?.key ? 0 : cqModel.price * tokens,
+      model: cqModel.name || '',
+      tokens,
+      cqList: agents,
+      cqResult: result.value
+    }
+  };
+};
+
+async function functionCall({
+  userOpenaiAccount,
+  inputs: { agents, systemPrompt, history = [], userChatInput }
+}: Props) {
+  const cqModel = global.cqModel;
 
   const messages: ChatItemType[] = [
     ...(systemPrompt
@@ -50,16 +84,15 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
     }
   ];
   const filterMessages = ChatContextFilter({
-    model: agentModel,
-    prompts: messages,
-    maxTokens
+    messages,
+    maxTokens: cqModel.maxToken
   });
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
+  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   //   function body
   const agentFunction = {
     name: agentFunName,
-    description: '判断用户问题的类型属于哪方面，返回对应的枚举字段',
+    description: '判断用户问题的类型属于哪方面，返回对应的字段',
     parameters: {
       type: 'object',
       properties: {
@@ -76,7 +109,7 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
 
   const response = await chatAPI.createChatCompletion(
     {
-      model: agentModel,
+      model: cqModel.model,
       temperature: 0,
       messages: [...adaptMessages],
       function_call: { name: agentFunName },
@@ -89,19 +122,51 @@ export const dispatchClassifyQuestion = async (props: Record<string, any>): Prom
 
   const arg = JSON.parse(response.data.choices?.[0]?.message?.function_call?.arguments || '');
 
-  const tokens = response.data.usage?.total_tokens || 0;
+  return {
+    arg,
+    tokens: response.data.usage?.total_tokens || 0
+  };
+}
 
-  const result = agents.find((item) => item.key === arg?.type) || agents[0];
+async function completions({
+  userOpenaiAccount,
+  inputs: { agents, systemPrompt = '', history = [], userChatInput }
+}: Props) {
+  const extractModel = global.extractModel;
+
+  const messages: ChatItemType[] = [
+    {
+      obj: ChatRoleEnum.Human,
+      value: replaceVariable(extractModel.prompt || Prompt_CQJson, {
+        systemPrompt,
+        typeList: agents.map((item) => `ID: "${item.key}", 问题类型:${item.value}`).join('\n'),
+        text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
+Human:${userChatInput}`
+      })
+    }
+  ];
+
+  const chatAPI = getAIChatApi(userOpenaiAccount);
+
+  const { data } = await chatAPI.createChatCompletion(
+    {
+      model: extractModel.model,
+      temperature: 0.01,
+      messages: adaptChat2GptMessages({ messages, reserveId: false }),
+      stream: false
+    },
+    {
+      timeout: 480000,
+      ...axiosConfig(userOpenaiAccount)
+    }
+  );
+  const answer = data.choices?.[0].message?.content || '';
+  const totalTokens = data.usage?.total_tokens || 0;
+
+  const id = agents.find((item) => answer.includes(item.key))?.key || '';
 
   return {
-    [result.key]: 1,
-    [TaskResponseKeyEnum.responseData]: {
-      moduleName: ChatModuleEnum.CQ,
-      price: userOpenaiAccount?.key ? 0 : countModelPrice({ model: agentModel, tokens }),
-      model: getModel(agentModel)?.name || agentModel,
-      tokens,
-      cqList: agents,
-      cqResult: result.value
-    }
+    tokens: totalTokens,
+    arg: { type: id }
   };
-};
+}

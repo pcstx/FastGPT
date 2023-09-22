@@ -38,13 +38,13 @@ export const jsonRes = <T = any>(
   }
 
   // another error
-  let msg = message || error?.message;
+  let msg = '';
   if ((code < 200 || code >= 400) && !message) {
-    msg = error?.message || '请求错误';
+    msg = error?.response?.statusText || error?.message || '请求错误';
     if (typeof error === 'string') {
       msg = error;
     } else if (proxyError[error?.code]) {
-      msg = '接口连接异常';
+      msg = '网络连接异常';
     } else if (error?.response?.data?.error?.message) {
       msg = error?.response?.data?.error?.message;
     } else if (openaiAccountError[error?.response?.data?.error?.code]) {
@@ -59,7 +59,7 @@ export const jsonRes = <T = any>(
   res.status(code).json({
     code,
     statusText: '',
-    message: msg,
+    message: message || msg,
     data: data !== undefined ? data : null
   });
 };
@@ -81,11 +81,11 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
     });
   }
 
-  let msg = error?.message || '请求错误';
+  let msg = error?.response?.statusText || error?.message || '请求错误';
   if (typeof error === 'string') {
     msg = error;
   } else if (proxyError[error?.code]) {
-    msg = '接口连接异常';
+    msg = '网络连接异常';
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
   } else if (openaiAccountError[error?.response?.data?.error?.code]) {

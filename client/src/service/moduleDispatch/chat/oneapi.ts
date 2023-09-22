@@ -1,38 +1,37 @@
 import type { NextApiResponse } from 'next';
-import { sseResponse } from '@/service/utils/tools';
-import { adaptChatItem_openAI, countOpenAIToken } from '@/utils/plugin/openai';
-import { modelToolMap } from '@/utils/plugin';
-import { ChatContextFilter } from '@/service/utils/chat/index';
+import { ChatContextFilter } from '@/service/common/tiktoken';
 import type { ChatItemType, QuoteItemType } from '@/types/chat';
 import type { ChatHistoryItemResType } from '@/types/chat';
-import { ChatModuleEnum, ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum, sseResponseEventEnum } from '@/constants/chat';
 import { SSEParseData, parseStreamChunk } from '@/utils/sse';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIChatApi, axiosConfig } from '@/service/lib/openai';
 import { TaskResponseKeyEnum } from '@/constants/chat';
 import { getChatModel } from '@/service/utils/data';
-import { countModelPrice } from '@/service/events/pushBill';
+import { countModelPrice } from '@/service/common/bill/push';
 import { ChatModelItemType } from '@/types/model';
-import { UserModelSchema } from '@/types/mongoSchema';
 import { textCensor } from '@/api/service/plugins';
 import { ChatCompletionRequestMessageRoleEnum } from 'openai';
 import { AppModuleItemType } from '@/types/app';
+import { countMessagesTokens, sliceMessagesTB } from '@/utils/common/tiktoken';
+import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { defaultQuotePrompt, defaultQuoteTemplate } from '@/prompts/core/AIChat';
+import type { AIChatProps } from '@/types/core/aiChat';
+import { replaceVariable } from '@/utils/common/tools/text';
+import { FlowModuleTypeEnum } from '@/constants/flow';
+import { ModuleDispatchProps } from '@/types/core/modules';
+import { Readable } from 'stream';
+import { responseWrite, responseWriteController } from '@/service/common/stream';
+import { addLog } from '@/service/utils/tools';
 
-export type ChatProps = {
-  res: NextApiResponse;
-  model: string;
-  temperature?: number;
-  maxToken?: number;
-  history?: ChatItemType[];
-  userChatInput: string;
-  stream?: boolean;
-  detail?: boolean;
-  quoteQA?: QuoteItemType[];
-  systemPrompt?: string;
-  limitPrompt?: string;
-  userOpenaiAccount: UserModelSchema['openaiAccount'];
-  outputs: AppModuleItemType['outputs'];
-};
+export type ChatProps = ModuleDispatchProps<
+  AIChatProps & {
+    userChatInput: string;
+    history?: ChatItemType[];
+    quoteQA?: QuoteItemType[];
+    limitPrompt?: string;
+  }
+>;
 export type ChatResponse = {
   [TaskResponseKeyEnum.answerText]: string;
   [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType;
@@ -40,22 +39,27 @@ export type ChatResponse = {
 };
 
 /* request openai chat */
-export const dispatchChatCompletion = async (props: Record<string, any>): Promise<ChatResponse> => {
+export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
   let {
     res,
-    model = global.chatModels[0]?.model,
-    temperature = 0,
-    maxToken = 4000,
+    moduleName,
     stream = false,
     detail = false,
-    history = [],
-    quoteQA = [],
-    userChatInput,
-    systemPrompt = '',
-    limitPrompt = '',
     userOpenaiAccount,
-    outputs
-  } = props as ChatProps;
+    outputs,
+    inputs: {
+      model = global.chatModels[0]?.model,
+      temperature = 0,
+      maxToken = 4000,
+      history = [],
+      quoteQA = [],
+      userChatInput,
+      systemPrompt = '',
+      limitPrompt,
+      quoteTemplate,
+      quotePrompt
+    }
+  } = props;
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
@@ -67,16 +71,16 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { filterQuoteQA, quotePrompt, hasQuoteOutput } = filterQuote({
+  const { filterQuoteQA, quoteText } = filterQuote({
     quoteQA,
-    model: modelConstantsData
+    model: modelConstantsData,
+    quoteTemplate
   });
 
   if (modelConstantsData.censor) {
     await textCensor({
       text: `${systemPrompt}
-      ${quotePrompt}
-      ${limitPrompt}
+      ${quoteText}
       ${userChatInput}
       `
     });
@@ -85,11 +89,11 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   const { messages, filterMessages } = getChatMessages({
     model: modelConstantsData,
     history,
+    quoteText,
     quotePrompt,
     userChatInput,
     systemPrompt,
-    limitPrompt,
-    hasQuoteOutput
+    limitPrompt
   });
   const { max_tokens } = getMaxTokens({
     model: modelConstantsData,
@@ -142,7 +146,7 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
         value: answer
       });
 
-      const totalTokens = countOpenAIToken({
+      const totalTokens = countMessagesTokens({
         messages: completeMessages
       });
 
@@ -154,8 +158,8 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
         completeMessages
       };
     } else {
-      const answer = stream ? '' : response.data.choices?.[0].message?.content || '';
-      const totalTokens = stream ? 0 : response.data.usage?.total_tokens || 0;
+      const answer = response.data.choices?.[0].message?.content || '';
+      const totalTokens = response.data.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
@@ -173,15 +177,15 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
   return {
     [TaskResponseKeyEnum.answerText]: answerText,
     [TaskResponseKeyEnum.responseData]: {
-      moduleName: ChatModuleEnum.AIChat,
+      moduleType: FlowModuleTypeEnum.chatNode,
+      moduleName,
       price: userOpenaiAccount?.key ? 0 : countModelPrice({ model, tokens: totalTokens }),
       model: modelConstantsData.name,
       tokens: totalTokens,
       question: userChatInput,
-      answer: answerText,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
-      completeMessages
+      historyPreview: getHistoryPreview(completeMessages)
     },
     finish: true
   };
@@ -189,66 +193,67 @@ export const dispatchChatCompletion = async (props: Record<string, any>): Promis
 
 function filterQuote({
   quoteQA = [],
-  model
+  model,
+  quoteTemplate
 }: {
-  quoteQA: ChatProps['quoteQA'];
+  quoteQA: ChatProps['inputs']['quoteQA'];
   model: ChatModelItemType;
+  quoteTemplate?: string;
 }) {
-  const sliceResult = modelToolMap.tokenSlice({
-    maxToken: model.quoteMaxToken,
-    messages: quoteQA.map((item) => ({
+  const sliceResult = sliceMessagesTB({
+    maxTokens: model.quoteMaxToken,
+    messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
-      value: item.a ? `${item.q}\n${item.a}` : item.q
+      value: replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+        ...item,
+        index: `${index + 1}`
+      })
     }))
   });
 
   // slice filterSearch
   const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
 
-  const quotePrompt =
+  const quoteText =
     filterQuoteQA.length > 0
-      ? `"""${filterQuoteQA
-          .map((item) =>
-            item.a ? `{instruction:"${item.q}",output:"${item.a}"}` : `{instruction:"${item.q}"}`
+      ? `${filterQuoteQA
+          .map((item, index) =>
+            replaceVariable(quoteTemplate || defaultQuoteTemplate, {
+              ...item,
+              index: `${index + 1}`
+            })
           )
-          .join('\n')}"""`
+          .join('\n')}`
       : '';
 
   return {
     filterQuoteQA,
-    quotePrompt,
-    hasQuoteOutput: !!filterQuoteQA.find((item) => item.a)
+    quoteText
   };
 }
 function getChatMessages({
   quotePrompt,
+  quoteText,
   history = [],
   systemPrompt,
   limitPrompt,
   userChatInput,
-  model,
-  hasQuoteOutput
+  model
 }: {
-  quotePrompt: string;
-  history: ChatProps['history'];
+  quotePrompt?: string;
+  quoteText: string;
+  history: ChatProps['inputs']['history'];
   systemPrompt: string;
-  limitPrompt: string;
+  limitPrompt?: string;
   userChatInput: string;
   model: ChatModelItemType;
-  hasQuoteOutput: boolean;
 }) {
-  const limitText = (() => {
-    if (!quotePrompt) {
-      return limitPrompt;
-    }
-    const defaultPrompt = `三引号引用的内容是我提供给你的知识，它们拥有最高优先级。instruction 是相关介绍${
-      hasQuoteOutput ? '，output 是预期回答或补充' : ''
-    }，使用引用内容来回答我下面的问题。`;
-    if (limitPrompt) {
-      return `${defaultPrompt}${limitPrompt}`;
-    }
-    return `${defaultPrompt}\n回答内容限制：你仅回答三引号中提及的内容，下面我提出的问题与引用内容无关时，你可以直接回复: "你的问题没有在知识库中体现"`;
-  })();
+  const question = quoteText
+    ? replaceVariable(quotePrompt || defaultQuotePrompt, {
+        quote: quoteText,
+        question: userChatInput
+      })
+    : userChatInput;
 
   const messages: ChatItemType[] = [
     ...(systemPrompt
@@ -259,36 +264,27 @@ function getChatMessages({
           }
         ]
       : []),
-    ...(quotePrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: quotePrompt
-          }
-        ]
-      : []),
     ...history,
-    ...(limitText
+    ...(limitPrompt
       ? [
           {
             obj: ChatRoleEnum.System,
-            value: limitText
+            value: limitPrompt
           }
         ]
       : []),
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: question
     }
   ];
 
   const filterMessages = ChatContextFilter({
-    model: model.model,
-    prompts: messages,
+    messages,
     maxTokens: Math.ceil(model.contextMaxToken - 300) // filter token. not response maxToken
   });
 
-  const adaptMessages = adaptChatItem_openAI({ messages: filterMessages, reserveId: false });
+  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   return {
     messages: adaptMessages,
@@ -302,12 +298,12 @@ function getMaxTokens({
 }: {
   maxToken: number;
   model: ChatModelItemType;
-  filterMessages: ChatProps['history'];
+  filterMessages: ChatProps['inputs']['history'];
 }) {
   const tokensLimit = model.contextMaxToken;
   /* count response max token */
 
-  const promptsToken = modelToolMap.countTokens({
+  const promptsToken = countMessagesTokens({
     messages: filterMessages
   });
   maxToken = maxToken + promptsToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
@@ -330,7 +326,7 @@ function targetResponse({
     outputs.find((output) => output.key === TaskResponseKeyEnum.answerText)?.targets || [];
 
   if (targets.length === 0) return;
-  sseResponse({
+  responseWrite({
     res,
     event: detail ? sseResponseEventEnum.answer : undefined,
     data: textAdaptGptResponse({
@@ -348,40 +344,62 @@ async function streamResponse({
   detail: boolean;
   response: any;
 }) {
-  let answer = '';
-  let error: any = null;
-  const parseData = new SSEParseData();
+  return new Promise<{ answer: string }>((resolve, reject) => {
+    const stream = response.data as Readable;
+    let answer = '';
+    const parseData = new SSEParseData();
 
-  try {
-    for await (const chunk of response.data as any) {
-      if (res.closed) break;
-      const parse = parseStreamChunk(chunk);
+    const write = responseWriteController({
+      res,
+      readStream: stream
+    });
+
+    stream.on('data', (data) => {
+      if (res.closed) {
+        stream.destroy();
+        return resolve({ answer });
+      }
+
+      const parse = parseStreamChunk(data);
       parse.forEach((item) => {
         const { data } = parseData.parse(item);
         if (!data || data === '[DONE]') return;
 
         const content: string = data?.choices?.[0]?.delta?.content || '';
-        error = data.error;
-        answer += content;
+        if (data.error) {
+          addLog.error(`SSE response`, data.error);
+        } else {
+          answer += content;
 
-        sseResponse({
-          res,
-          event: detail ? sseResponseEventEnum.answer : undefined,
-          data: textAdaptGptResponse({
-            text: content
-          })
-        });
+          responseWrite({
+            write,
+            event: detail ? sseResponseEventEnum.answer : undefined,
+            data: textAdaptGptResponse({
+              text: content
+            })
+          });
+        }
       });
-    }
-  } catch (error) {
-    console.log('pipe error', error);
-  }
+    });
+    stream.on('end', () => {
+      resolve({ answer });
+    });
+    stream.on('close', () => {
+      resolve({ answer });
+    });
+    stream.on('error', (err) => {
+      reject(err);
+    });
+  });
+}
 
-  if (error) {
-    return Promise.reject(error);
-  }
-
-  return {
-    answer
-  };
+function getHistoryPreview(completeMessages: ChatItemType[]) {
+  return completeMessages.map((item, i) => {
+    if (item.obj === ChatRoleEnum.System) return item;
+    if (i >= completeMessages.length - 2) return item;
+    return {
+      ...item,
+      value: item.value.length > 15 ? `${item.value.slice(0, 15)}...` : item.value
+    };
+  });
 }

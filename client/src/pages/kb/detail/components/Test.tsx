@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Box, Textarea, Button, Flex, useTheme, Grid, Progress } from '@chakra-ui/react';
-import { useKbStore } from '@/store/kb';
-import type { KbTestItemType } from '@/types/plugin';
-import { searchText, getKbDataItemById } from '@/api/plugins/kb';
+import { useDatasetStore } from '@/store/dataset';
+import type { SearchTestItemType } from '@/types/core/dataset';
+import { getDatasetDataItemById } from '@/api/core/dataset/data';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
@@ -13,18 +13,17 @@ import { useToast } from '@/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { useUserStore } from '@/store/user';
+import { postSearchText } from '@/api/core/dataset';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 const Test = ({ kbId }: { kbId: string }) => {
-  const { kbDetail } = useUserStore();
-
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useGlobalStore();
-  const { kbTestList, pushKbTestItem, delKbTestItemById, updateKbItemById } = useKbStore();
+  const { kbDetail, kbTestList, pushKbTestItem, delKbTestItemById, updateKbItemById } =
+    useDatasetStore();
   const [inputText, setInputText] = useState('');
-  const [kbTestItem, setKbTestItem] = useState<KbTestItemType>();
+  const [kbTestItem, setKbTestItem] = useState<SearchTestItemType>();
   const [editData, setEditData] = useState<FormData>();
 
   const kbTestHistory = useMemo(
@@ -33,7 +32,7 @@ const Test = ({ kbId }: { kbId: string }) => {
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => searchText({ kbId, text: inputText.trim() }),
+    mutationFn: () => postSearchText({ kbId, text: inputText.trim() }),
     onSuccess(res) {
       const testItem = {
         id: nanoid(),
@@ -199,7 +198,7 @@ const Test = ({ kbId }: { kbId: string }) => {
                   onClick={async () => {
                     try {
                       setLoading(true);
-                      const data = await getKbDataItemById(item.id);
+                      const data = await getDatasetDataItemById(item.id);
 
                       if (!data) {
                         throw new Error('该数据已被删除');

@@ -8,6 +8,7 @@ import { initPg } from './pg';
 import { createHashPassword } from '@/utils/tools';
 import { createLogger, format, transports } from 'winston';
 import 'winston-mongodb';
+import { getTikTokenEnc } from '@/utils/common/tiktoken';
 
 /**
  * connect MongoDB and init data
@@ -38,6 +39,8 @@ export async function connectToDatabase(): Promise<void> {
 
   // init function
   getInitConfig();
+  // init tikToken
+  getTikTokenEnc();
 
   try {
     mongoose.set('strictQuery', true);
@@ -127,13 +130,13 @@ export * from './models/chat';
 export * from './models/chatItem';
 export * from './models/app';
 export * from './models/user';
-export * from './models/bill';
+export * from './common/bill/schema';
 export * from './models/pay';
 export * from './models/trainingData';
 export * from './models/openapi';
 export * from './models/promotionRecord';
 export * from './models/collection';
-export * from './models/outLink';
 export * from './models/kb';
 export * from './models/inform';
 export * from './models/image';
+export * from './support/outLink/schema';
