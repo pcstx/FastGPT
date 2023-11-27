@@ -1,5 +1,5 @@
 ---
-title: '部署 One API，实现多模型支持'
+title: '接入微软、ChatGLM、本地模型等'
 description: '通过接入 One API 来实现对各种大模型的支持'
 icon: 'Api'
 draft: false
@@ -7,9 +7,8 @@ toc: true
 weight: 730
 ---
 
-默认情况下，FastGPT 只配置了 GPT 的 3 个模型，如果你需要接入其他模型，需要进行一些额外配置。
-
-[One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
+* 默认情况下，FastGPT 只配置了 GPT 的 3 个模型，如果你需要接入其他模型，需要进行一些额外配置。
+* [One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
 
 FastGPT 可以通过接入 One API 来实现对各种大模型的支持。部署方法也很简单。
 
@@ -47,7 +46,6 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 ```
 SESSION_SECRET=SESSION_SECRET
-CHANNEL_TEST_FREQUENCY=30
 POLLING_INTERVAL=60
 BATCH_UPDATE_ENABLED=true
 BATCH_UPDATE_INTERVAL=60
@@ -73,7 +71,7 @@ BATCH_UPDATE_INTERVAL=60
 
 ### 3. 修改 FastGPT 的环境变量
 
-有了 One API 令牌后，FastGPT 可以通过修改 baseurl 和 key 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
+有了 One API 令牌后，FastGPT 可以通过修改 `baseurl` 和 `key` 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
 
 ```bash
 # 下面的地址是 Sealos 提供的，务必写上 v1， 两个项目都在 sealos 部署时候，https://xxxx.cloud.sealos.io 可以改用内网地址
@@ -92,7 +90,7 @@ CHAT_API_KEY=sk-xxxxxx
 
 ### 2. 修改 FastGPT 配置文件
 
-可以在 `/client/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
+可以在 `/projects/app/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
 
 ```json
 "ChatModels": [
@@ -100,12 +98,13 @@ CHAT_API_KEY=sk-xxxxxx
     {
       "model": "ERNIE-Bot", // 这里的模型需要对应 One API 的模型
       "name": "文心一言", // 对外展示的名称
-      "contextMaxToken": 4000, // 最大长下文 token，无论什么模型都按 GPT35 的计算。GPT 外的模型需要自行大致计算下这个值。可以调用官方接口去比对 Token 的倍率，然后在这里粗略计算。
+      "maxContext": 8000, // 最大长下文 token，无论什么模型都按 GPT35 的计算。GPT 外的模型需要自行大致计算下这个值。可以调用官方接口去比对 Token 的倍率，然后在这里粗略计算。
+      "maxResponse": 4000, // 最大回复 token
       // 例如：文心一言的中英文 token 基本是 1:1，而 GPT 的中文 Token 是 2:1，如果文心一言官方最大 Token 是 4000，那么这里就可以填 8000，保险点就填 7000.
       "quoteMaxToken": 2000, // 引用知识库的最大 Token
       "maxTemperature": 1, // 最大温度
-      "price": 0, // 1个token 价格 => 1.5 / 100000 * 1000 = 0.015元/1k token
-      "defaultSystem": "" // 默认的系统提示词
+      "vision": false, // 是否开启图片识别
+      "defaultSystemChatPrompt": "" // 默认的系统提示词
     }
     ...
 ],

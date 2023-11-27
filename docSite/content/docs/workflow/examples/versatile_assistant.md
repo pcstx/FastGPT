@@ -245,7 +245,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -300,7 +300,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -427,7 +427,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -713,14 +713,14 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "custom",
         "label": "引用内容",
         "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": false
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -745,7 +745,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -871,14 +871,14 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "custom",
         "label": "引用内容",
         "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": false
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -903,7 +903,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -1085,14 +1085,14 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "custom",
         "label": "引用内容",
         "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": false
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -1117,7 +1117,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",
@@ -1162,7 +1162,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
       {
         "key": "history",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "type": "source",
         "targets": [
           {
@@ -1205,7 +1205,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -1452,14 +1452,14 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "custom",
         "label": "引用内容",
         "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "kb_quote",
+        "valueType": "datasetQuote",
         "connected": false
       },
       {
         "key": "history",
         "type": "target",
         "label": "聊天记录",
-        "valueType": "chat_history",
+        "valueType": "chatHistory",
         "connected": true
       },
       {
@@ -1484,7 +1484,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     "outputs": [
       {
         "key": "answerText",
-        "label": "模型回复",
+        "label": "AI回复",
         "description": "将在 stream 回复完毕后触发",
         "valueType": "string",
         "type": "source",

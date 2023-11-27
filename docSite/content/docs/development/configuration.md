@@ -7,105 +7,154 @@ toc: true
 weight: 520
 ---
 
-由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `client/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/installation/docker/) 来挂载配置文件。
+由于环境变量不利于配置复杂的内容，新版 FastGPT 采用了 ConfigMap 的形式挂载配置文件，你可以在 `projects/app/data/config.json` 看到默认的配置文件。可以参考 [docker-compose 快速部署](/docs/installation/docker/) 来挂载配置文件。
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。
 
-这个配置文件中包含了前端页面定制、系统级参数、AI 对话的模型等……
+这个配置文件中包含了系统级参数、AI 对话的模型、function 模型等……
 
-{{% alert context="warning" %}}
-注意：下面的配置介绍仅是局部介绍，你需要完整挂载整个 `config.json`，不能仅挂载一部分。你可以直接在默认的 config.json 基础上根据下面的介绍进行修改。挂载上去的配置文件不能包含注释。
-{{% /alert %}}
-
-## 基础字段粗略说明
-
-这里介绍一些基础的配置字段：
-
-```json
-// 这个配置会控制前端的一些样式
-"FeConfig": {
-    "show_emptyChat": true, // 对话页面，空内容时，是否展示介绍页
-    "show_register": false, // 是否展示注册按键（包括忘记密码，注册账号和三方登录）
-    "show_appStore": false, // 是否展示应用市场（不过目前权限还没做好，放开也没用）
-    "show_userDetail": false, // 是否展示用户详情（账号余额、OpenAI 绑定）
-    "show_git": true, // 是否展示 Git
-    "systemTitle": "FastGPT", // 系统的 title
-    "authorText": "Made by FastGPT Team.", // 签名
-},
-...
-...
-// 这个配置文件是系统级参数
-"SystemParams": {
-    "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
-    "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
-    "pgIvfflatProbe": 20  // pg vector 搜索探针。没有设置索引前可忽略，通常 50w 组以上才需要设置。
-},
-...
-```
 
 ## 完整配置参数
 
+**使用时，请务必去除注释！**
+
 ```json
 {
-  "FeConfig": {
-    "show_emptyChat": true,
-    "show_register": false,
-    "show_appStore": false,
-    "show_userDetail": false,
-    "show_git": true,
-    "systemTitle": "FastGPT",
-    "authorText": "Made by FastGPT Team.",
-    "scripts": []
-  },
   "SystemParams": {
-    "vectorMaxProcess": 15,
-    "qaMaxProcess": 15,
-    "pgIvfflatProbe": 20
+    "pluginBaseUrl": "", // 商业版接口地址
+    "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
+    "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
+    "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
   },
-  "plugins": {},
-  "ChatModels": [
+  "ChatModels": [ // 对话模型
     {
-      "model": "gpt-3.5-turbo",
-      "name": "GPT35-4k",
-      "contextMaxToken": 4000, // 最大token，均按 gpt35 计算
-      "quoteMaxToken": 2000, // 引用内容最大 token
-      "maxTemperature": 1.2, // 最大温度
-      "price": 0,
-      "defaultSystem": ""
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "price": 0, // 除以 100000 后等于1个token的价格
+      "maxContext": 16000, // 最大上下文长度
+      "maxResponse": 4000, // 最大回复长度
+      "quoteMaxToken": 2000, // 最大引用内容长度
+      "maxTemperature": 1.2, // 最大温度值
+      "censor": false, // 是否开启敏感词过滤(商业版)
+      "vision": false, // 支持图片输入
+      "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
-      "contextMaxToken": 16000,
+      "maxContext": 16000,
+      "maxResponse": 16000,
+      "price": 0,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
-      "price": 0,
-      "defaultSystem": ""
+      "censor": false,
+      "vision": false,
+      "defaultSystemChatPrompt": ""
     },
     {
       "model": "gpt-4",
       "name": "GPT4-8k",
-      "contextMaxToken": 8000,
+      "maxContext": 8000,
+      "maxResponse": 8000,
+      "price": 0,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
+      "censor": false,
+      "vision": false,
+      "defaultSystemChatPrompt": ""
+    },
+    {
+      "model": "gpt-4-vision-preview",
+      "name": "GPT4-Vision",
+      "maxContext": 128000,
+      "maxResponse": 4000,
       "price": 0,
-      "defaultSystem": ""
+      "quoteMaxToken": 100000,
+      "maxTemperature": 1.2,
+      "censor": false,
+      "vision": true,
+      "defaultSystemChatPrompt": ""
     }
   ],
-  "QAModel": {
-    "model": "gpt-3.5-turbo-16k",
-    "name": "GPT35-16k",
-    "maxToken": 16000,
-    "price": 0
-  },
-  "VectorModels": [
+  "QAModels": [ // QA 生成模型
+    {
+      "model": "gpt-3.5-turbo-16k",
+      "name": "GPT35-16k",
+      "maxContext": 16000,
+      "maxResponse": 16000,
+      "price": 0
+    }
+  ],
+  "CQModels": [ // 问题分类模型
+    {
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "price": 0,
+      "functionCall": true, // 是否支持function call， 不支持的模型需要设置为 false，会走提示词生成
+      "functionPrompt": ""
+    },
+    {
+      "model": "gpt-4",
+      "name": "GPT4-8k",
+      "maxContext": 8000,
+      "maxResponse": 8000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    }
+  ],
+  "ExtractModels": [ // 内容提取模型
+    {
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "price": 0,
+      "functionCall": true,
+      "functionPrompt": ""
+    }
+  ],
+  "QGModels": [ // 生成下一步指引
+    {
+      "model": "gpt-3.5-turbo-1106",
+      "name": "GPT35-1106",
+      "maxContext": 1600,
+      "maxResponse": 4000,
+      "price": 0
+    }
+  ],
+  "VectorModels": [ // 向量模型
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "price": 0,
-      "defaultToken": 500,
+      "price": 0.2,
+      "defaultToken": 700,
       "maxToken": 3000
     }
-  ]
+  ],
+  "AudioSpeechModels": [
+    {
+      "model": "tts-1",
+      "name": "OpenAI TTS1",
+      "price": 0,
+      "baseUrl": "",
+      "key": "",
+      "voices": [
+        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
+        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
+        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
+        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
+        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
+        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
+      ]
+    }
+  ],
+  "WhisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "price": 0
+  }
 }
 ```
